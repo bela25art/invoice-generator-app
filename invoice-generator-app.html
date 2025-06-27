@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Invoice Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .input-group input[type="text"],
+        .input-group input[type="number"],
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #374151;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary:hover {
+            background-color: #4f46e5;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .invoice-table th, .invoice-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .invoice-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .invoice-table tfoot td {
+            font-weight: 600;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            position: relative;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #6366f1; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="container bg-white rounded-lg shadow-xl p-6 md:p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">AI Invoice Generator</h1>
+
+        <!-- Company Information Section -->
+        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Your Company Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="company-name" class="text-blue-700">Company Name:</label>
+                    <input type="text" id="company-name" placeholder="Your Company Inc." class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="company-logo" class="text-blue-700">Company Logo:</label>
+                    <input type="file" id="company-logo" accept="image/*" class="w-full text-blue-700 p-2 border border-blue-300 rounded-md">
+                    <div class="mt-2" id="logo-preview-container">
+                        <!-- Logo preview will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipt Upload Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Receipt Photo</h2>
+            <div class="input-group mb-4">
+                <label for="receipt-photo" class="text-gray-700">Select Receipt Image:</label>
+                <input type="file" id="receipt-photo" accept="image/*" class="w-full text-gray-700 p-2 border border-gray-300 rounded-md">
+            </div>
+            <button id="extract-data-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">
+                Extract Data from Receipt
+                <div id="extract-loading-spinner" class="loading-spinner hidden"></div>
+            </button>
+            <div id="extracted-items-display" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md hidden">
+                <p class="font-semibold">Extracted Items:</p>
+                <ul id="extracted-items-list" class="list-disc list-inside text-sm"></ul>
+            </div>
+        </div>
+
+        <!-- Invoice Details Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">2. Invoice Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="client-name" class="text-gray-700">Client Name:</label>
+                    <input type="text" id="client-name" placeholder="John Doe Services" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="invoice-date" class="text-gray-700">Invoice Date:</label>
+                    <input type="date" id="invoice-date" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="due-date" class="text-gray-700">Due Date:</label>
+                    <input type="date" id="due-date" class="mt-1">
+                </div>
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-700 mb-3">Labor Cost</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="labor-hours" class="text-gray-700">Labor Hours:</label>
+                    <input type="number" id="labor-hours" value="0" min="0" step="0.5" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
+                    <input type="number" id="hourly-rate" value="50.00" min="0" step="0.01" class="mt-1">
+                </div>
+            </div>
+        </div>
+
+        <!-- Generate Invoice Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Generate Invoice</h2>
+            <button id="generate-invoice-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">
+                Generate Invoice
+                <div id="generate-loading-spinner" class="loading-spinner hidden"></div>
+            </button>
+        </div>
+
+        <!-- Invoice Display Section -->
+        <div id="invoice-output" class="bg-white p-6 rounded-lg shadow-md border border-gray-200 hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start mb-4">
+                <div>
+                    <img id="invoice-company-logo" src="" alt="Company Logo" class="h-16 mb-2 object-contain" onerror="this.style.display='none'" style="display:none;">
+                    <h2 class="text-2xl font-bold text-gray-800" id="display-company-name"></h2>
+                </div>
+                <div class="text-right mt-4 md:mt-0">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Invoice</h2>
+                    <p class="text-sm text-gray-600"><strong>Client Name:</strong> <span id="display-client-name"></span></p>
+                    <p class="text-sm text-gray-600"><strong>Invoice Date:</strong> <span id="display-invoice-date"></span></p>
+                    <p class="text-sm text-gray-600"><strong>Due Date:</strong> <span id="display-due-date"></span></p>
+                </div>
+            </div>
+
+            <table class="invoice-table w-full border-collapse mt-6">
+                <thead>
+                    <tr>
+                        <th class="w-1/2">Description</th>
+                        <th class="w-1/6">Qty</th>
+                        <th class="w-1/6">Unit Price</th>
+                        <th class="w-1/6 text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="invoice-items-body">
+                    <!-- Invoice items will be injected here -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-right">Subtotal:</td>
+                        <td class="text-right" id="invoice-subtotal"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Tax:</td>
+                        <td class="text-right" id="invoice-tax"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right font-bold text-lg">Grand Total:</td>
+                        <td class="text-right font-bold text-lg" id="invoice-grand-total"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Message/Modal Box -->
+        <div id="message-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button" id="close-modal-btn">&times;</span>
+                <p id="modal-message" class="text-lg text-gray-800 text-center"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Global variables for Firebase configuration, though not used in this specific app logic
+        // as we are not persisting data with Firestore. Included for compliance with general guidelines.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let extractedMaterials = []; // To store items extracted from the receipt
+        let companyLogoBase64 = null; // To store the base64 string of the company logo
+
+        // Get DOM elements
+        const companyNameInput = document.getElementById('company-name');
+        const companyLogoInput = document.getElementById('company-logo');
+        const logoPreviewContainer = document.getElementById('logo-preview-container');
+
+        const receiptPhotoInput = document.getElementById('receipt-photo');
+        const extractDataBtn = document.getElementById('extract-data-btn');
+        const extractLoadingSpinner = document.getElementById('extract-loading-spinner');
+        const extractedItemsDisplay = document.getElementById('extracted-items-display');
+        const extractedItemsList = document.getElementById('extracted-items-list');
+
+        const clientNameInput = document.getElementById('client-name');
+        const invoiceDateInput = document.getElementById('invoice-date');
+        const dueDateInput = document.getElementById('due-date');
+        const laborHoursInput = document.getElementById('labor-hours');
+        const hourlyRateInput = document.getElementById('hourly-rate');
+        const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
+        const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
+
+        const invoiceOutputDiv = document.getElementById('invoice-output');
+        const displayCompanyName = document.getElementById('display-company-name');
+        const invoiceCompanyLogo = document.getElementById('invoice-company-logo');
+        const displayClientName = document.getElementById('display-client-name');
+        const displayInvoiceDate = document.getElementById('display-invoice-date');
+        const displayDueDate = document.getElementById('display-due-date');
+        const invoiceItemsBody = document.getElementById('invoice-items-body');
+        const invoiceSubtotal = document.getElementById('invoice-subtotal');
+        const invoiceTax = document.getElementById('invoice-tax');
+        const invoiceGrandTotal = document.getElementById('invoice-grand-total');
+
+        const messageModal = document.getElementById('message-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // Set default dates
+        window.onload = function() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const dd = String(today.getDate()).padStart(2, '0');
+            invoiceDateInput.value = `${yyyy}-${mm}-${dd}`;
+
+            // Set due date to 7 days from now
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + 7);
+            const dueYyyy = dueDate.getFullYear();
+            const dueMm = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dueDd = String(dueDate.getDate()).padStart(2, '0');
+            dueDateInput.value = `${dueYyyy}-${dueMm}-${dueDd}`;
+        };
+
+        // Function to show custom message modal
+        function showMessage(message) {
+            modalMessage.textContent = message;
+            messageModal.style.display = 'flex'; // Use flex to center
+        }
+
+        // Function to hide custom message modal
+        closeModalBtn.onclick = function() {
+            messageModal.style.display = 'none';
+        }
+
+        // Close modal if user clicks outside of it
+        window.onclick = function(event) {
+            if (event.target == messageModal) {
+                messageModal.style.display = 'none';
+            }
+        }
+
+        // Event listener for company logo input
+        companyLogoInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    companyLogoBase64 = e.target.result; // Store base64
+                    const img = document.createElement('img');
+                    img.src = companyLogoBase64;
+                    img.alt = "Company Logo Preview";
+                    img.className = "h-12 object-contain rounded"; // Tailwind classes for preview
+                    logoPreviewContainer.innerHTML = ''; // Clear previous preview
+                    logoPreviewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                companyLogoBase64 = null;
+                logoPreviewContainer.innerHTML = '';
+            }
+        });
+
+        // Event listener for receipt photo upload and data extraction
+        extractDataBtn.addEventListener('click', async () => {
+            const file = receiptPhotoInput.files[0];
+            if (!file) {
+                showMessage("Please upload a receipt photo first.");
+                return;
+            }
+
+            extractDataBtn.disabled = true;
+            extractLoadingSpinner.classList.remove('hidden');
+            extractedItemsDisplay.classList.add('hidden'); // Hide previous results
+
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64ImageData = reader.result.split(',')[1]; // Get base64 string without data:image/jpeg;base64,
+
+                try {
+                    // Prompt for AI to extract structured data from the image
+                    const prompt = `Extract the following information from this receipt image in JSON format.
+                    The JSON should be an array of objects for 'items', and separate fields for 'subtotal', 'tax', and 'grand_total'.
+                    If any field is not found, use null or 0 for numerical values.
+                    Ensure that all prices and totals are numerical values (floats).
+                    Example JSON structure:
+                    {
+                      "items": [
+                        {"description": "Item 1", "quantity": 1, "unit_price": 10.50, "total_price": 10.50},
+                        {"description": "Item 2", "quantity": 2, "unit_price": 5.00, "total_price": 10.00}
+                      ],
+                      "subtotal": 20.50,
+                      "tax": 1.50,
+                      "grand_total": 22.00
+                    }
+                    `;
+
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = {
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inlineData: {
+                                            mimeType: file.type,
+                                            data: base64ImageData
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    "items": {
+                                        "type": "ARRAY",
+                                        "items": {
+                                            "type": "OBJECT",
+                                            "properties": {
+                                                "description": { "type": "STRING" },
+                                                "quantity": { "type": "NUMBER" },
+                                                "unit_price": { "type": "NUMBER" },
+                                                "total_price": { "type": "NUMBER" }
+                                            }
+                                        }
+                                    },
+                                    "subtotal": { "type": "NUMBER" },
+                                    "tax": { "type": "NUMBER" },
+                                    "grand_total": { "type": "NUMBER" }
+                                }
+                            }
+                        }
+                    };
+
+                    const apiKey = ""; // Canvas will provide this at runtime
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const jsonText = result.candidates[0].content.parts[0].text;
+                        const parsedData = JSON.parse(jsonText);
+
+                        extractedMaterials = parsedData.items || [];
+                        // const extractedSubtotal = parsedData.subtotal || 0; // Not directly used in current calculation
+                        // const extractedTax = parsedData.tax || 0; // Not directly used in current calculation
+                        // const extractedGrandTotal = parsedData.grand_total || 0; // Not directly used in current calculation
+
+                        // Display extracted items to the user
+                        extractedItemsList.innerHTML = '';
+                        if (extractedMaterials.length > 0) {
+                            extractedMaterials.forEach(item => {
+                                const li = document.createElement('li');
+                                li.textContent = `${item.description || 'N/A'} (Qty: ${item.quantity || 1}, Unit Price: $${(item.unit_price || 0).toFixed(2)}, Total: $${(item.total_price || 0).toFixed(2)})`;
+                                extractedItemsList.appendChild(li);
+                            });
+                        } else {
+                            const li = document.createElement('li');
+                            li.textContent = "No specific items extracted. Please check the receipt clarity.";
+                            extractedItemsList.appendChild(li);
+                        }
+                        extractedItemsDisplay.classList.remove('hidden');
+
+                    } else {
+                        showMessage("Could not extract data. Please try another receipt or ensure clarity.");
+                    }
+                } catch (error) {
+                    console.error('Error extracting data:', error);
+                    showMessage("An error occurred during data extraction. Please try again.");
+                } finally {
+                    extractDataBtn.disabled = false;
+                    extractLoadingSpinner.classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Event listener for invoice generation
+        generateInvoiceBtn.addEventListener('click', () => {
+            generateInvoiceBtn.disabled = true;
+            generateLoadingSpinner.classList.remove('hidden');
+            invoiceOutputDiv.classList.add('hidden'); // Hide previous invoice
+
+            const companyName = companyNameInput.value.trim();
+            const clientName = clientNameInput.value.trim();
+            const invoiceDate = invoiceDateInput.value;
+            const dueDate = dueDateInput.value;
+            const laborHours = parseFloat(laborHoursInput.value) || 0;
+            const hourlyRate = parseFloat(hourlyRateInput.value) || 0;
+
+            if (!companyName || !clientName || !invoiceDate || !dueDate) {
+                showMessage("Please fill in all required invoice details (Company Name, Client Name, Invoice Date, Due Date).");
+                generateInvoiceBtn.disabled = false;
+                generateLoadingSpinner.classList.add('hidden');
+                return;
+            }
+
+            // Calculate labor total
+            const laborTotal = laborHours * hourlyRate;
+
+            // Clear previous items
+            invoiceItemsBody.innerHTML = '';
+
+            let materialSubtotal = 0;
+
+            // Add extracted materials to the invoice
+            if (extractedMaterials.length > 0) {
+                extractedMaterials.forEach(item => {
+                    const quantity = item.quantity || 1;
+                    const unitPrice = item.unit_price || 0;
+                    const itemTotalPrice = quantity * unitPrice; // Recalculate based on extracted values
+                    materialSubtotal += itemTotalPrice;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.description || 'N/A'}</td>
+                        <td>${quantity}</td>
+                        <td>$${unitPrice.toFixed(2)}</td>
+                        <td class="text-right">$${itemTotalPrice.toFixed(2)}</td>
+                    `;
+                    invoiceItemsBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center text-gray-500">No material items extracted. Upload a receipt.</td>
+                `;
+                invoiceItemsBody.appendChild(row);
+            }
+
+            // Add labor cost as an item
+            if (laborTotal > 0 || laborHours > 0) {
+                const laborRow = document.createElement('tr');
+                laborRow.innerHTML = `
+                    <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
+                    <td>1</td>
+                    <td>$${laborTotal.toFixed(2)}</td>
+                    <td class="text-right">$${laborTotal.toFixed(2)}</td>
+                `;
+                invoiceItemsBody.appendChild(laborRow);
+            }
+
+            const subtotal = materialSubtotal + laborTotal;
+            // For simplicity, let's assume a fixed tax rate or no tax if not extracted
+            // In a real app, you'd calculate tax based on jurisdiction/extracted tax
+            const taxRate = 0.07; // Example 7% tax rate
+            const tax = subtotal * taxRate;
+            const grandTotal = subtotal + tax;
+
+            // Populate invoice display with company name and logo
+            displayCompanyName.textContent = companyName;
+            if (companyLogoBase64) {
+                invoiceCompanyLogo.src = companyLogoBase64;
+                invoiceCompanyLogo.style.display = 'block';
+            } else {
+                invoiceCompanyLogo.style.display = 'none'; // Hide if no logo
+            }
+            displayClientName.textContent = clientName;
+            displayInvoiceDate.textContent = invoiceDate;
+            displayDueDate.textContent = dueDate;
+            invoiceSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+            invoiceTax.textContent = `$${tax.toFixed(2)}`;
+            invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
+
+            invoiceOutputDiv.classList.remove('hidden');
+
+            generateInvoiceBtn.disabled = false;
+            generateLoadingSpinner.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
