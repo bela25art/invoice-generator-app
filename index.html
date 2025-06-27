@@ -393,7 +393,7 @@
         // Function to show custom message modal
         function showMessage(message) {
             modalMessage.textContent = message;
-            messageModal.style.display = 'flex'; // Use flex to center
+            modalMessage.style.display = 'flex'; // Use flex to center
         }
 
         // Function to hide custom message modal
@@ -442,7 +442,7 @@
                         invoiceLineItems[index][field] = value;
                         // Recalculate total_price if quantity or unit_price changes
                         invoiceLineItems[index].total_price = (invoiceLineItems[index].quantity || 0) * (invoiceLineItems[index].unit_price || 0);
-                        renderEditableItems(); // Re-render to update any calculated values if needed, or just let the next invoice generate calculate
+                        // No re-render here, as changes are live in the input fields. The final generation will use the updated `invoiceLineItems`.
                     });
                 });
 
@@ -450,7 +450,7 @@
                     button.addEventListener('click', (e) => {
                         const index = parseInt(e.target.dataset.index);
                         invoiceLineItems.splice(index, 1); // Remove item from array
-                        renderEditableItems(); // Re-render the list
+                        renderEditableItems(); // Re-render the list to reflect deletion
                     });
                 });
             }
@@ -524,8 +524,38 @@
 
                 try {
                     // Enhanced prompt for AI to extract structured data from the image
-                    const prompt = `Extract all discernible line items, their quantities, unit prices, and total prices from this receipt image. Also, identify the subtotal, tax, and grand total. If a value is unclear or absent, make a reasonable inference based on surrounding context or mark it as null/0 if no inference is possible. Prioritize extracting numerical values accurately, ensuring all monetary amounts are floats. Return the data as a JSON object structured as follows:\n{\n  \"items\": [\n    {\"description\": \"String\", \"quantity\": Number, \"unit_price\": Number, \"total_price\": Number}\n  ],\n  \"subtotal\": Number,\n  \"tax\": Number,\n  \"grand_total\": Number\n}\n\nIf no items are confidently extracted, return an empty 'items' array. If totals are not found, use 0.`;
-
+                    const prompt = `Analyze the provided receipt image. Your primary goal is to extract itemized lists (description, quantity, unit price, and total price for each item), along with the overall subtotal, tax, and grand total.
+                    * **Be resilient to image quality:** Even if parts are blurry or incomplete, attempt to infer the most probable values.
+                    * **Prioritize numerical accuracy:** All price, quantity, and total fields MUST be valid numbers (floats). If a numerical value cannot be confidently extracted or inferred, use 0.
+                    * **Handle missing data:** If a description, quantity, or unit price for an item is missing, use "N/A" for strings, or 0 for numbers, but still include the item if its existence is clear.
+                    * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty:
+                        {
+                          "items": [
+                            {"description": "string", "quantity": number, "unit_price": number, "total_price": number}
+                          ],
+                          "subtotal": number,
+                          "tax": number,
+                          "grand_total": number
+                        }
+                    Example of expected output if a receipt has two items and a total:
+                    {
+                      "items": [
+                        {"description": "Espresso", "quantity": 2, "unit_price": 3.50, "total_price": 7.00},
+                        {"description": "Croissant", "quantity": 1, "unit_price": 4.25, "total_price": 4.25}
+                      ],
+                      "subtotal": 11.25,
+                      "tax": 0.89,
+                      "grand_total": 12.14
+                    }
+                    Example of expected output if very little can be extracted but the receipt seems to contain items:
+                    {
+                      "items": [
+                        {"description": "Item 1 (inferred)", "quantity": 1, "unit_price": 0, "total_price": 0}
+                      ],
+                      "subtotal": 0,
+                      "tax": 0,
+                      "grand_total": 0
+                    }`;
 
                     let chatHistory = [];
                     chatHistory.push({ role: "user", parts: [{ text: prompt }] });
@@ -593,20 +623,23 @@
                             extractionStatusDiv.textContent = `Successfully extracted ${newlyExtractedItems.length} items. Review and edit below.`;
                             extractionStatusDiv.classList.add('text-green-600');
                         } else {
-                            extractionStatusDiv.textContent = "No specific items extracted. Consider adding manually or trying a clearer photo.";
+                            extractionStatusDiv.textContent = "No specific items extracted. This can happen with very unclear photos. Please try a clearer one or add items manually below.";
+                            extractionStatusDiv.classList.remove('text-green-600');
                             extractionStatusDiv.classList.add('text-red-600');
                         }
                         renderEditableItems(); // Update the displayed editable list
 
                     } else {
                         showMessage("Could not extract data. The AI response was empty or malformed. Please try another receipt or ensure clarity.");
-                        extractionStatusDiv.textContent = "Extraction failed: Empty or malformed AI response.";
+                        extractionStatusDiv.textContent = "Extraction failed: Empty or malformed AI response. Please try a clearer photo or add items manually.";
+                        extractionStatusDiv.classList.remove('text-green-600');
                         extractionStatusDiv.classList.add('text-red-600');
                     }
                 } catch (error) {
                     console.error('Error extracting data:', error);
-                    showMessage("An error occurred during data extraction. Please ensure the image is a valid receipt and try again.");
-                    extractionStatusDiv.textContent = "Extraction error. Check console for details.";
+                    showMessage("An error occurred during data extraction. Please ensure the image is a valid receipt and try again. Error: " + error.message);
+                    extractionStatusDiv.textContent = "Extraction error. Please try again with a clear photo or add items manually.";
+                    extractionStatusDiv.classList.remove('text-green-600');
                     extractionStatusDiv.classList.add('text-red-600');
                 } finally {
                     extractDataBtn.disabled = false;
