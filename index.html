@@ -250,7 +250,7 @@
                 </div>
                 <div class="input-group">
                     <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
-                    <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
+                    <input type="number" id="hourly-rate" value="50.00" min="0" step="0.01" class="mt-1">
                 </div>
             </div>
         </div>
@@ -306,7 +306,45 @@
                     </tr>
                 </tfoot>
             </table>
-            <button id="send-invoice-email-btn" class="btn btn-primary mt-6 w-full md:w-auto">Send Invoice to Customer Email</button>
+            <!-- Updated Send Invoice Email Button -->
+            <button class="btn btn-primary mt-6 w-full md:w-auto"
+                    onclick="
+                        const companyName = document.getElementById('company-name').value.trim();
+                        const clientName = document.getElementById('client-name').value.trim();
+                        const customerEmail = document.getElementById('customer-email').value.trim();
+                        const invoiceDate = document.getElementById('invoice-date').value;
+                        const dueDate = document.getElementById('due-date').value;
+                        const grandTotal = document.getElementById('invoice-grand-total').textContent;
+
+                        if (!customerEmail) { showMessage('Please enter the customer\'s email address.'); return; }
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(customerEmail)) { showMessage('Please enter a valid email address for the customer.'); return; }
+                        if (!companyName || !clientName || !invoiceDate || !grandTotal) { showMessage('Please generate the invoice first and ensure all details are filled.'); return; }
+
+                        const subject = `${companyName} - Invoice for ${clientName} on ${invoiceDate}`;
+                        let body = `Dear ${clientName},\n\nPlease find below a summary of your invoice from ${companyName}.\n\n`;
+                        body += `Invoice Date: ${invoiceDate}\n`;
+                        body += `Due Date: ${dueDate}\n\n`;
+                        body += `Invoice Summary:\n`;
+                        invoiceLineItems.forEach(item => {
+                            const qty = item.quantity || 1;
+                            const price = (item.unit_price || 0).toFixed(2);
+                            const total = (qty * parseFloat(price)).toFixed(2);
+                            body += `- ${item.description || 'N/A'} (Qty: ${qty}, Unit Price: $${price}) = $${total}\n`;
+                        });
+                        const laborHours = parseFloat(document.getElementById('labor-hours').value) || 0;
+                        const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
+                        const laborTotal = laborHours * hourlyRate;
+                        if (laborTotal > 0) { body += `- Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr) = $${laborTotal.toFixed(2)}\n`; }
+                        body += `\nSubtotal: ${document.getElementById('invoice-subtotal').textContent}\n`;
+                        body += `Tax: ${document.getElementById('invoice-tax').textContent}\n`;
+                        body += `Grand Total: ${grandTotal}\n\n`;
+                        body += `Please let us know if you have any questions.\n\nThank you for your business!\n\n${companyName}`;
+
+                        sendInvoiceEmail(customerEmail, subject, body);
+                    ">
+                Send Invoice to Customer Email
+            </button>
         </div>
 
         <!-- Message/Modal Box -->
@@ -348,7 +386,7 @@
 
 
         const clientNameInput = document.getElementById('client-name');
-        const customerEmailInput = document.getElementById('customer-email'); // New: Customer Email input
+        const customerEmailInput = document.getElementById('customer-email');
         const invoiceDateInput = document.getElementById('invoice-date');
         const dueDateInput = document.getElementById('due-date');
         const laborHoursInput = document.getElementById('labor-hours');
@@ -366,7 +404,9 @@
         const invoiceSubtotal = document.getElementById('invoice-subtotal');
         const invoiceTax = document.getElementById('invoice-tax');
         const invoiceGrandTotal = document.getElementById('invoice-grand-total');
-        const sendInvoiceEmailBtn = document.getElementById('send-invoice-email-btn'); // New: Send Email button
+        // The sendInvoiceEmailBtn is now directly handled by its onclick attribute in HTML
+        // const sendInvoiceEmailBtn = document.getElementById('send-invoice-email-btn');
+
 
         const messageModal = document.getElementById('message-modal');
         const modalMessage = document.getElementById('modal-message');
@@ -751,55 +791,34 @@
             generateLoadingSpinner.classList.add('hidden');
         });
 
-        // Event listener for sending invoice email
-        sendInvoiceEmailBtn.addEventListener('click', () => {
-            const companyName = companyNameInput.value.trim();
-            const clientName = clientNameInput.value.trim();
-            const customerEmail = customerEmailInput.value.trim();
-            const invoiceDate = invoiceDateInput.value;
-            const dueDate = dueDateInput.value;
-            const grandTotal = invoiceGrandTotal.textContent; // Get the displayed grand total
+        // The user-provided sendInvoiceEmail function, modified to use showMessage
+        async function sendInvoiceEmail(toEmail, subject, bodyContent) {
+            try {
+                const response = await fetch('/api/sendEmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: toEmail,
+                        subject: subject,
+                        body: bodyContent // Sending plain text summary here
+                    }),
+                });
 
-            if (!customerEmail) {
-                showMessage("Please enter the customer's email address.");
-                return;
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage(data.message || 'Email sent successfully!');
+                } else {
+                    showMessage(`Failed to send email: ${data.message || response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Email send failed:', error);
+                showMessage('Failed to send email. This function requires a backend server configured to handle email sending. Check the console for details.');
             }
+        }
 
-            if (!companyName || !clientName || !invoiceDate || !grandTotal) {
-                 showMessage("Please generate the invoice first and ensure all details are filled.");
-                 return;
-            }
-
-            const subject = encodeURIComponent(`${companyName} - Invoice for ${clientName} on ${invoiceDate}`);
-            let body = `Dear ${clientName},\n\nPlease find below a summary of your invoice from ${companyName}.\n\n`;
-
-            body += `Invoice Date: ${invoiceDate}\n`;
-            body += `Due Date: ${dueDate}\n\n`;
-
-            body += `Invoice Summary:\n`;
-            invoiceLineItems.forEach(item => {
-                const qty = item.quantity || 1;
-                const price = (item.unit_price || 0).toFixed(2);
-                const total = (qty * parseFloat(price)).toFixed(2);
-                body += `- ${item.description || 'N/A'} (Qty: ${qty}, Unit Price: $${price}) = $${total}\n`;
-            });
-
-            const laborHours = parseFloat(laborHoursInput.value) || 0;
-            const hourlyRate = parseFloat(hourlyRateInput.value) || 0;
-            const laborTotal = laborHours * hourlyRate;
-            if (laborTotal > 0) {
-                 body += `- Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr) = $${laborTotal.toFixed(2)}\n`;
-            }
-
-            body += `\nSubtotal: ${invoiceSubtotal.textContent}\n`;
-            body += `Tax: ${invoiceTax.textContent}\n`;
-            body += `Grand Total: ${grandTotal}\n\n`;
-            body += `Please let us know if you have any questions.\n\nThank you for your business!\n\n${companyName}`;
-
-            const mailtoLink = `mailto:${encodeURIComponent(customerEmail)}?subject=${subject}&body=${encodeURIComponent(body)}`;
-
-            window.location.href = mailtoLink;
-        });
+        // The previous event listener for sendInvoiceEmailBtn is removed because onclick is now used.
+        // sendInvoiceEmailBtn.addEventListener('click', () => { ... });
     </script>
 </body>
 </html>
