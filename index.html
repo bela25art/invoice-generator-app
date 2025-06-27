@@ -120,6 +120,28 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Styles for editable items table */
+        .editable-item-row td {
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        .editable-item-row input[type="text"],
+        .editable-item-row input[type="number"] {
+            padding: 0.3rem 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            width: 100%;
+        }
+        .editable-item-row button {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        .editable-item-row button:hover {
+            background-color: #dc2626;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -155,15 +177,52 @@
                 Extract Data from Receipt
                 <div id="extract-loading-spinner" class="loading-spinner hidden"></div>
             </button>
-            <div id="extracted-items-display" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md hidden">
-                <p class="font-semibold">Extracted Items:</p>
-                <ul id="extracted-items-list" class="list-disc list-inside text-sm"></ul>
+            <div id="extraction-status" class="mt-4 text-sm text-gray-600"></div>
+        </div>
+
+        <!-- Manual Item Entry Section -->
+        <div class="bg-purple-50 p-6 rounded-lg border border-purple-200">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">2. Add/Edit Invoice Items</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
+                <div class="input-group md:col-span-2">
+                    <label for="manual-description" class="text-purple-700">Description:</label>
+                    <input type="text" id="manual-description" placeholder="Service fee, Product XYZ" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="manual-quantity" class="text-purple-700">Qty:</label>
+                    <input type="number" id="manual-quantity" value="1" min="0" step="1" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="manual-unit-price" class="text-purple-700">Unit Price ($):</label>
+                    <input type="number" id="manual-unit-price" value="0.00" min="0" step="0.01" class="mt-1">
+                </div>
+                <button id="add-manual-item-btn" class="btn btn-primary bg-purple-600 hover:bg-purple-700 mt-2 md:mt-0">Add Item Manually</button>
+            </div>
+
+            <div id="invoice-items-management" class="mt-6 bg-white p-4 rounded-lg border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Invoice Line Items:</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="w-1/2 text-left p-2">Description</th>
+                            <th class="w-1/6 text-left p-2">Qty</th>
+                            <th class="w-1/6 text-left p-2">Unit Price</th>
+                            <th class="w-1/6 text-left p-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="editable-items-body">
+                        <!-- Editable items will be injected here -->
+                        <tr><td colspan="4" class="text-center text-gray-500 p-4" id="no-items-message">No items added yet.</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
+
         <!-- Invoice Details Section -->
         <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">2. Invoice Details</h2>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Invoice Details</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="input-group">
                     <label for="client-name" class="text-gray-700">Client Name:</label>
@@ -194,7 +253,7 @@
 
         <!-- Generate Invoice Section -->
         <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Generate Invoice</h2>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">4. Generate Invoice</h2>
             <button id="generate-invoice-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">
                 Generate Invoice
                 <div id="generate-loading-spinner" class="loading-spinner hidden"></div>
@@ -225,7 +284,7 @@
                         <th class="w-1/6 text-right">Amount</th>
                     </tr>
                 </thead>
-                <tbody id="invoice-items-body">
+                <tbody id="final-invoice-items-body">
                     <!-- Invoice items will be injected here -->
                 </tbody>
                 <tfoot>
@@ -262,7 +321,7 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        let extractedMaterials = []; // To store items extracted from the receipt
+        let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
         let companyLogoBase64 = null; // To store the base64 string of the company logo
 
         // Get DOM elements
@@ -273,8 +332,15 @@
         const receiptPhotoInput = document.getElementById('receipt-photo');
         const extractDataBtn = document.getElementById('extract-data-btn');
         const extractLoadingSpinner = document.getElementById('extract-loading-spinner');
-        const extractedItemsDisplay = document.getElementById('extracted-items-display');
-        const extractedItemsList = document.getElementById('extracted-items-list');
+        const extractionStatusDiv = document.getElementById('extraction-status');
+
+        const manualDescriptionInput = document.getElementById('manual-description');
+        const manualQuantityInput = document.getElementById('manual-quantity');
+        const manualUnitPriceInput = document.getElementById('manual-unit-price');
+        const addManualItemBtn = document.getElementById('add-manual-item-btn');
+        const editableItemsBody = document.getElementById('editable-items-body');
+        const noItemsMessage = document.getElementById('no-items-message');
+
 
         const clientNameInput = document.getElementById('client-name');
         const invoiceDateInput = document.getElementById('invoice-date');
@@ -290,7 +356,7 @@
         const displayClientName = document.getElementById('display-client-name');
         const displayInvoiceDate = document.getElementById('display-invoice-date');
         const displayDueDate = document.getElementById('display-due-date');
-        const invoiceItemsBody = document.getElementById('invoice-items-body');
+        const finalInvoiceItemsBody = document.getElementById('final-invoice-items-body'); // Renamed for clarity
         const invoiceSubtotal = document.getElementById('invoice-subtotal');
         const invoiceTax = document.getElementById('invoice-tax');
         const invoiceGrandTotal = document.getElementById('invoice-grand-total');
@@ -314,6 +380,7 @@
             const dueMm = String(dueDate.getMonth() + 1).padStart(2, '0');
             const dueDd = String(dueDate.getDate()).padStart(2, '0');
             dueDateInput.value = `${dueYyyy}-${dueMm}-${dueDd}`;
+            renderEditableItems(); // Initial render for empty state
         };
 
         // Function to show custom message modal
@@ -333,6 +400,55 @@
                 messageModal.style.display = 'none';
             }
         }
+
+        // Function to render the editable invoice items table
+        function renderEditableItems() {
+            editableItemsBody.innerHTML = ''; // Clear current list
+            if (invoiceLineItems.length === 0) {
+                noItemsMessage.style.display = 'table-row';
+            } else {
+                noItemsMessage.style.display = 'none';
+                invoiceLineItems.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'editable-item-row border-b border-gray-100';
+                    row.innerHTML = `
+                        <td><input type="text" value="${item.description || ''}" data-index="${index}" data-field="description" class="p-2 border rounded-md w-full"></td>
+                        <td><input type="number" value="${item.quantity || 1}" min="1" step="1" data-index="${index}" data-field="quantity" class="p-2 border rounded-md w-full"></td>
+                        <td><input type="number" value="${(item.unit_price || 0).toFixed(2)}" min="0" step="0.01" data-index="${index}" data-field="unit_price" class="p-2 border rounded-md w-full"></td>
+                        <td><button data-index="${index}" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md">Delete</button></td>
+                    `;
+                    editableItemsBody.appendChild(row);
+                });
+
+                // Add event listeners for editing and deleting
+                editableItemsBody.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        const field = e.target.dataset.field;
+                        let value = e.target.value;
+
+                        if (field === 'quantity' || field === 'unit_price') {
+                            value = parseFloat(value) || 0;
+                            if (field === 'quantity' && value < 1) value = 1; // Ensure quantity is at least 1
+                            if (field === 'unit_price' && value < 0) value = 0; // Ensure unit price is not negative
+                        }
+                        invoiceLineItems[index][field] = value;
+                        // Recalculate total_price if quantity or unit_price changes
+                        invoiceLineItems[index].total_price = (invoiceLineItems[index].quantity || 0) * (invoiceLineItems[index].unit_price || 0);
+                        renderEditableItems(); // Re-render to update any calculated values if needed, or just let the next invoice generate calculate
+                    });
+                });
+
+                editableItemsBody.querySelectorAll('button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        invoiceLineItems.splice(index, 1); // Remove item from array
+                        renderEditableItems(); // Re-render the list
+                    });
+                });
+            }
+        }
+
 
         // Event listener for company logo input
         companyLogoInput.addEventListener('change', (event) => {
@@ -355,6 +471,31 @@
             }
         });
 
+        // Event listener for manual item addition
+        addManualItemBtn.addEventListener('click', () => {
+            const description = manualDescriptionInput.value.trim();
+            const quantity = parseFloat(manualQuantityInput.value) || 1;
+            const unitPrice = parseFloat(manualUnitPriceInput.value) || 0;
+
+            if (!description || quantity <= 0 || unitPrice < 0) {
+                showMessage("Please enter a valid description, quantity (must be > 0), and unit price for manual item.");
+                return;
+            }
+
+            const newItem = {
+                description: description,
+                quantity: quantity,
+                unit_price: unitPrice,
+                total_price: quantity * unitPrice // Calculate total for manual item
+            };
+
+            invoiceLineItems.push(newItem);
+            renderEditableItems(); // Update the display
+            manualDescriptionInput.value = '';
+            manualQuantityInput.value = '1';
+            manualUnitPriceInput.value = '0.00';
+        });
+
         // Event listener for receipt photo upload and data extraction
         extractDataBtn.addEventListener('click', async () => {
             const file = receiptPhotoInput.files[0];
@@ -365,29 +506,19 @@
 
             extractDataBtn.disabled = true;
             extractLoadingSpinner.classList.remove('hidden');
-            extractedItemsDisplay.classList.add('hidden'); // Hide previous results
+            extractionStatusDiv.textContent = 'Extracting data... This may take a moment.';
+            extractionStatusDiv.classList.remove('text-red-600', 'text-green-600');
+            extractionStatusDiv.classList.add('text-gray-600');
+
 
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64ImageData = reader.result.split(',')[1]; // Get base64 string without data:image/jpeg;base64,
 
                 try {
-                    // Prompt for AI to extract structured data from the image
-                    const prompt = `Extract the following information from this receipt image in JSON format.
-                    The JSON should be an array of objects for 'items', and separate fields for 'subtotal', 'tax', and 'grand_total'.
-                    If any field is not found, use null or 0 for numerical values.
-                    Ensure that all prices and totals are numerical values (floats).
-                    Example JSON structure:
-                    {
-                      "items": [
-                        {"description": "Item 1", "quantity": 1, "unit_price": 10.50, "total_price": 10.50},
-                        {"description": "Item 2", "quantity": 2, "unit_price": 5.00, "total_price": 10.00}
-                      ],
-                      "subtotal": 20.50,
-                      "tax": 1.50,
-                      "grand_total": 22.00
-                    }
-                    `;
+                    // Enhanced prompt for AI to extract structured data from the image
+                    const prompt = `Extract all discernible line items, their quantities, unit prices, and total prices from this receipt image. Also, identify the subtotal, tax, and grand total. If a value is unclear or absent, make a reasonable inference based on surrounding context or mark it as null/0 if no inference is possible. Prioritize extracting numerical values accurately, ensuring all monetary amounts are floats. Return the data as a JSON object structured as follows:\n{\n  \"items\": [\n    {\"description\": \"String\", \"quantity\": Number, \"unit_price\": Number, \"total_price\": Number}\n  ],\n  \"subtotal\": Number,\n  \"tax\": Number,\n  \"grand_total\": Number\n}\n\nIf no items are confidently extracted, return an empty 'items' array. If totals are not found, use 0.`;
+
 
                     let chatHistory = [];
                     chatHistory.push({ role: "user", parts: [{ text: prompt }] });
@@ -447,32 +578,29 @@
                         const jsonText = result.candidates[0].content.parts[0].text;
                         const parsedData = JSON.parse(jsonText);
 
-                        extractedMaterials = parsedData.items || [];
-                        // const extractedSubtotal = parsedData.subtotal || 0; // Not directly used in current calculation
-                        // const extractedTax = parsedData.tax || 0; // Not directly used in current calculation
-                        // const extractedGrandTotal = parsedData.grand_total || 0; // Not directly used in current calculation
+                        const newlyExtractedItems = parsedData.items || [];
 
-                        // Display extracted items to the user
-                        extractedItemsList.innerHTML = '';
-                        if (extractedMaterials.length > 0) {
-                            extractedMaterials.forEach(item => {
-                                const li = document.createElement('li');
-                                li.textContent = `${item.description || 'N/A'} (Qty: ${item.quantity || 1}, Unit Price: $${(item.unit_price || 0).toFixed(2)}, Total: $${(item.total_price || 0).toFixed(2)})`;
-                                extractedItemsList.appendChild(li);
-                            });
+                        if (newlyExtractedItems.length > 0) {
+                            // Add extracted items to the unified list
+                            invoiceLineItems.push(...newlyExtractedItems);
+                            extractionStatusDiv.textContent = `Successfully extracted ${newlyExtractedItems.length} items. Review and edit below.`;
+                            extractionStatusDiv.classList.add('text-green-600');
                         } else {
-                            const li = document.createElement('li');
-                            li.textContent = "No specific items extracted. Please check the receipt clarity.";
-                            extractedItemsList.appendChild(li);
+                            extractionStatusDiv.textContent = "No specific items extracted. Consider adding manually or trying a clearer photo.";
+                            extractionStatusDiv.classList.add('text-red-600');
                         }
-                        extractedItemsDisplay.classList.remove('hidden');
+                        renderEditableItems(); // Update the displayed editable list
 
                     } else {
-                        showMessage("Could not extract data. Please try another receipt or ensure clarity.");
+                        showMessage("Could not extract data. The AI response was empty or malformed. Please try another receipt or ensure clarity.");
+                        extractionStatusDiv.textContent = "Extraction failed: Empty or malformed AI response.";
+                        extractionStatusDiv.classList.add('text-red-600');
                     }
                 } catch (error) {
                     console.error('Error extracting data:', error);
-                    showMessage("An error occurred during data extraction. Please try again.");
+                    showMessage("An error occurred during data extraction. Please ensure the image is a valid receipt and try again.");
+                    extractionStatusDiv.textContent = "Extraction error. Check console for details.";
+                    extractionStatusDiv.classList.add('text-red-600');
                 } finally {
                     extractDataBtn.disabled = false;
                     extractLoadingSpinner.classList.add('hidden');
@@ -501,20 +629,28 @@
                 return;
             }
 
+            if (invoiceLineItems.length === 0 && (laborHours * hourlyRate) === 0) {
+                 showMessage("Please add at least one item (manual or extracted) or provide labor hours to generate an invoice.");
+                 generateInvoiceBtn.disabled = false;
+                 generateLoadingSpinner.classList.add('hidden');
+                 return;
+            }
+
             // Calculate labor total
             const laborTotal = laborHours * hourlyRate;
 
-            // Clear previous items
-            invoiceItemsBody.innerHTML = '';
+            // Clear previous items in the final invoice display
+            finalInvoiceItemsBody.innerHTML = '';
 
             let materialSubtotal = 0;
 
-            // Add extracted materials to the invoice
-            if (extractedMaterials.length > 0) {
-                extractedMaterials.forEach(item => {
+            // Add all items from invoiceLineItems to the final invoice
+            if (invoiceLineItems.length > 0) {
+                invoiceLineItems.forEach(item => {
                     const quantity = item.quantity || 1;
                     const unitPrice = item.unit_price || 0;
-                    const itemTotalPrice = quantity * unitPrice; // Recalculate based on extracted values
+                    const itemTotalPrice = quantity * unitPrice;
+
                     materialSubtotal += itemTotalPrice;
 
                     const row = document.createElement('tr');
@@ -524,18 +660,12 @@
                         <td>$${unitPrice.toFixed(2)}</td>
                         <td class="text-right">$${itemTotalPrice.toFixed(2)}</td>
                     `;
-                    invoiceItemsBody.appendChild(row);
+                    finalInvoiceItemsBody.appendChild(row);
                 });
-            } else {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td colspan="4" class="text-center text-gray-500">No material items extracted. Upload a receipt.</td>
-                `;
-                invoiceItemsBody.appendChild(row);
             }
 
-            // Add labor cost as an item
-            if (laborTotal > 0 || laborHours > 0) {
+            // Add labor cost as an item if applicable
+            if (laborTotal > 0) {
                 const laborRow = document.createElement('tr');
                 laborRow.innerHTML = `
                     <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
@@ -543,12 +673,19 @@
                     <td>$${laborTotal.toFixed(2)}</td>
                     <td class="text-right">$${laborTotal.toFixed(2)}</td>
                 `;
-                invoiceItemsBody.appendChild(laborRow);
+                finalInvoiceItemsBody.appendChild(laborRow);
+            } else if (invoiceLineItems.length === 0) {
+                 // If no items extracted and no labor, show a message in the invoice itself
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center text-gray-500">No items to display on invoice.</td>
+                `;
+                finalInvoiceItemsBody.appendChild(row);
             }
 
+
             const subtotal = materialSubtotal + laborTotal;
-            // For simplicity, let's assume a fixed tax rate or no tax if not extracted
-            // In a real app, you'd calculate tax based on jurisdiction/extracted tax
+            // For simplicity, let's assume a fixed tax rate
             const taxRate = 0.07; // Example 7% tax rate
             const tax = subtotal * taxRate;
             const grandTotal = subtotal + tax;
