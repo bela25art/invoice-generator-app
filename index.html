@@ -256,7 +256,7 @@
                 </div>
                 <div class="input-group">
                     <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
-                    <input type="number" id="hourly-rate" value="50.00" min="0" step="0.01" class="mt-1">
+                    <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
                 </div>
             </div>
         </div>
@@ -312,16 +312,16 @@
                     </tr>
                 </tfoot>
             </table>
-            <!-- Updated Send Invoice Email Button -->
-            <button class="btn btn-primary mt-6 w-full md:w-auto"
+            <!-- Updated Send Invoice Email Button with onclick attribute -->
+            <button class="btn btn-primary mt-6 w-full md:w-auto" id="sendEmailButton"
                     onclick="
                         const companyName = document.getElementById('company-name').value.trim();
                         const clientName = document.getElementById('client-name').value.trim();
-                        const clientEmail = document.getElementById('clientEmail').value.trim(); /* Changed ID here */
+                        const clientEmail = document.getElementById('clientEmail').value.trim();
                         const invoiceDate = document.getElementById('invoice-date').value;
                         const dueDate = document.getElementById('due-date').value;
                         const grandTotal = document.getElementById('invoice-grand-total').textContent;
-                        const additionalNotes = document.getElementById('invoiceDetails').value.trim(); /* Get value from new textarea */
+                        const additionalNotes = document.getElementById('invoiceDetails').value.trim();
 
                         if (!clientEmail) { showMessage('Please enter the customer\'s email address.'); return; }
                         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -329,32 +329,91 @@
                         if (!companyName || !clientName || !invoiceDate || !grandTotal) { showMessage('Please generate the invoice first and ensure all details are filled.'); return; }
 
                         const subject = `${companyName} - Invoice for ${clientName} on ${invoiceDate}`;
-                        let body = `Dear ${clientName},\n\nPlease find below a summary of your invoice from ${companyName}.\n\n`;
-                        body += `Invoice Date: ${invoiceDate}\n`;
-                        body += `Due Date: ${dueDate}\n\n`;
+                        let htmlBody = `
+                            <html>
+                            <head>
+                                <style>
+                                    body { font-family: 'Inter', sans-serif; }
+                                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                                    th { background-color: #f2f2f2; }
+                                    .total-row td { font-weight: bold; }
+                                </style>
+                            </head>
+                            <body>
+                                <h1 style='color: #333;'>Invoice from ${companyName}</h1>
+                                <p><strong>Client Name:</strong> ${clientName}</p>
+                                <p><strong>Invoice Date:</strong> ${invoiceDate}</p>
+                                <p><strong>Due Date:</strong> ${dueDate}</p>
+                                ${additionalNotes ? `<p><strong>Additional Notes:</strong></p><p>${additionalNotes.replace(/\\n/g, '<br>')}</p>` : ''}
+                                
+                                <h2>Invoice Details:</h2>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Qty</th>
+                                            <th>Unit Price</th>
+                                            <th style='text-align: right;'>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
 
-                        body += `Invoice Summary:\n`;
                         invoiceLineItems.forEach(item => {
                             const qty = item.quantity || 1;
                             const price = (item.unit_price || 0).toFixed(2);
                             const total = (qty * parseFloat(price)).toFixed(2);
-                            body += `- ${item.description || 'N/A'} (Qty: ${qty}, Unit Price: $${price}) = $${total}\n`;
+                            htmlBody += `
+                                        <tr>
+                                            <td>${item.description || 'N/A'}</td>
+                                            <td>${qty}</td>
+                                            <td>$${price}</td>
+                                            <td style='text-align: right;'>$${total}</td>
+                                        </tr>
+                            `;
                         });
+
                         const laborHours = parseFloat(document.getElementById('labor-hours').value) || 0;
                         const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
                         const laborTotal = laborHours * hourlyRate;
-                        if (laborTotal > 0) { body += `- Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr) = $${laborTotal.toFixed(2)}\n`; }
-                        body += `\nSubtotal: ${document.getElementById('invoice-subtotal').textContent}\n`;
-                        body += `Tax: ${document.getElementById('invoice-tax').textContent}\n`;
-                        body += `Grand Total: ${grandTotal}\n\n`;
-
-                        if (additionalNotes) { /* Add additional notes if present */
-                            body += `Additional Notes:\n${additionalNotes}\n\n`;
+                        if (laborTotal > 0) {
+                            htmlBody += `
+                                        <tr>
+                                            <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
+                                            <td>1</td>
+                                            <td>$${laborTotal.toFixed(2)}</td>
+                                            <td style='text-align: right;'>$${laborTotal.toFixed(2)}</td>
+                                        </tr>
+                            `;
                         }
 
-                        body += `Please let us know if you have any questions.\n\nThank Tfor your business!\n\n${companyName}`;
+                        htmlBody += `
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class='total-row'>
+                                            <td colspan='3' style='text-align: right;'>Subtotal:</td>
+                                            <td style='text-align: right;'>${document.getElementById('invoice-subtotal').textContent}</td>
+                                        </tr>
+                                        <tr class='total-row'>
+                                            <td colspan='3' style='text-align: right;'>Tax:</td>
+                                            <td style='text-align: right;'>${document.getElementById('invoice-tax').textContent}</td>
+                                        </tr>
+                                        <tr class='total-row'>
+                                            <td colspan='3' style='text-align: right;'>Grand Total:</td>
+                                            <td style='text-align: right;'>${grandTotal}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                <p style='margin-top: 20px;'>Please let us know if you have any questions.</p>
+                                <p>Thank you for your business!</p>
+                                <p>${companyName}</p>
+                            </body>
+                            </html>
+                        `;
 
-                        sendInvoiceEmail(clientEmail, subject, body); /* Pass clientEmail to function */
+                        // Call the sendInvoiceEmail function with the generated HTML body
+                        sendInvoiceEmail(clientEmail, subject, htmlBody);
                     ">
                 Send Invoice to Customer Email
             </button>
@@ -814,7 +873,7 @@
                     body: JSON.stringify({
                         to: toEmail,
                         subject: subject,
-                        body: bodyContent // Sending plain text summary here
+                        body: bodyContent // Sending HTML content here
                     }),
                 });
 
@@ -832,7 +891,8 @@
         }
 
         // The previous event listener for sendInvoiceEmailBtn is removed because onclick is now used.
-        // sendInvoiceEmailBtn.addEventListener('click', () => { ... });
+        // const sendInvoiceEmailBtn = document.getElementById('send-invoice-email-btn');
+        // if (sendInvoiceEmailBtn) { sendInvoiceEmailBtn.addEventListener('click', () => { ... }); }
     </script>
 </body>
 </html>
