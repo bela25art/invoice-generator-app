@@ -256,7 +256,7 @@
                 </div>
                 <div class="input-group">
                     <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
-                    <input type="number" id="hourly-rate" value="50.00" min="0" step="0.01" class="mt-1">
+                    <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
                 </div>
             </div>
         </div>
@@ -399,7 +399,7 @@
                                         </tr>
                                         <tr class='total-row'>
                                             <td colspan='3' class='text-right'>Tax:</td>
-                                            <td class='text-right'>${document.getElementById('invoice-tax').textContent}</td>
+                                            <td class='text-right'>No Tax</td>
                                         </tr>
                                         <tr class='total-row'>
                                             <td colspan='3' class='text-right'>Grand Total:</td>
@@ -436,7 +436,7 @@
         // as we are not persisting data with Firestore. Included for compliance with general guidelines.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; // Fixed: Used __initial_auth_token
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
 
         let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
         let companyLogoBase64 = null; // To store the base64 string of the company logo
@@ -465,7 +465,7 @@
         const dueDateInput = document.getElementById('due-date');
         const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); // New: Invoice Details Textarea
         const laborHoursInput = document.getElementById('labor-hours');
-        const hourlyRateInput = document.getElementById('hourly-rate');
+        const hourlyRateInput = document.getElementById('hourly-rate'); // Changed default value
         const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
         const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
 
@@ -840,9 +840,8 @@
 
 
             const subtotal = materialSubtotal + laborTotal;
-            // For simplicity, let's assume a fixed tax rate
-            const taxRate = 0.07; // Example 7% tax rate
-            const tax = subtotal * taxRate;
+            // Tax is now 0 as per user request
+            const tax = 0; 
             const grandTotal = subtotal + tax;
 
             // Populate invoice display with company name and logo
@@ -857,7 +856,7 @@
             displayInvoiceDate.textContent = invoiceDate;
             displayDueDate.textContent = dueDate;
             invoiceSubtotal.textContent = `$${subtotal.toFixed(2)}`;
-            invoiceTax.textContent = `$${tax.toFixed(2)}`;
+            invoiceTax.textContent = `No Tax`; // Display "No Tax"
             invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
 
             invoiceOutputDiv.classList.remove('hidden');
