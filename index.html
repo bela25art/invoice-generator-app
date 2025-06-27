@@ -229,8 +229,8 @@
                     <input type="text" id="client-name" placeholder="John Doe Services" class="mt-1">
                 </div>
                 <div class="input-group">
-                    <label for="customer-email" class="text-gray-700">Customer Email:</label>
-                    <input type="email" id="customer-email" placeholder="customer@example.com" class="mt-1">
+                    <label for="clientEmail" class="text-gray-700">Customer Email:</label>
+                    <input type="email" id="clientEmail" placeholder="customer@example.com" class="mt-1">
                 </div>
                 <div class="input-group">
                     <label for="invoice-date" class="text-gray-700">Invoice Date:</label>
@@ -242,6 +242,12 @@
                 </div>
             </div>
 
+            <div class="input-group mb-4">
+                <label for="invoiceDetails" class="text-gray-700">Additional Invoice Notes:</label>
+                <textarea id="invoiceDetails" placeholder="Add any specific notes or terms for this invoice here..." rows="4" class="mt-1"></textarea>
+            </div>
+
+
             <h3 class="text-xl font-semibold text-gray-700 mb-3">Labor Cost</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="input-group">
@@ -250,7 +256,7 @@
                 </div>
                 <div class="input-group">
                     <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
-                    <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
+                    <input type="number" id="hourly-rate" value="50.00" min="0" step="0.01" class="mt-1">
                 </div>
             </div>
         </div>
@@ -311,20 +317,22 @@
                     onclick="
                         const companyName = document.getElementById('company-name').value.trim();
                         const clientName = document.getElementById('client-name').value.trim();
-                        const customerEmail = document.getElementById('customer-email').value.trim();
+                        const clientEmail = document.getElementById('clientEmail').value.trim(); /* Changed ID here */
                         const invoiceDate = document.getElementById('invoice-date').value;
                         const dueDate = document.getElementById('due-date').value;
                         const grandTotal = document.getElementById('invoice-grand-total').textContent;
+                        const additionalNotes = document.getElementById('invoiceDetails').value.trim(); /* Get value from new textarea */
 
-                        if (!customerEmail) { showMessage('Please enter the customer\'s email address.'); return; }
+                        if (!clientEmail) { showMessage('Please enter the customer\'s email address.'); return; }
                         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        if (!emailRegex.test(customerEmail)) { showMessage('Please enter a valid email address for the customer.'); return; }
+                        if (!emailRegex.test(clientEmail)) { showMessage('Please enter a valid email address for the customer.'); return; }
                         if (!companyName || !clientName || !invoiceDate || !grandTotal) { showMessage('Please generate the invoice first and ensure all details are filled.'); return; }
 
                         const subject = `${companyName} - Invoice for ${clientName} on ${invoiceDate}`;
                         let body = `Dear ${clientName},\n\nPlease find below a summary of your invoice from ${companyName}.\n\n`;
                         body += `Invoice Date: ${invoiceDate}\n`;
                         body += `Due Date: ${dueDate}\n\n`;
+
                         body += `Invoice Summary:\n`;
                         invoiceLineItems.forEach(item => {
                             const qty = item.quantity || 1;
@@ -339,9 +347,14 @@
                         body += `\nSubtotal: ${document.getElementById('invoice-subtotal').textContent}\n`;
                         body += `Tax: ${document.getElementById('invoice-tax').textContent}\n`;
                         body += `Grand Total: ${grandTotal}\n\n`;
-                        body += `Please let us know if you have any questions.\n\nThank you for your business!\n\n${companyName}`;
 
-                        sendInvoiceEmail(customerEmail, subject, body);
+                        if (additionalNotes) { /* Add additional notes if present */
+                            body += `Additional Notes:\n${additionalNotes}\n\n`;
+                        }
+
+                        body += `Please let us know if you have any questions.\n\nThank Tfor your business!\n\n${companyName}`;
+
+                        sendInvoiceEmail(clientEmail, subject, body); /* Pass clientEmail to function */
                     ">
                 Send Invoice to Customer Email
             </button>
@@ -386,9 +399,10 @@
 
 
         const clientNameInput = document.getElementById('client-name');
-        const customerEmailInput = document.getElementById('customer-email');
+        const clientEmailInput = document.getElementById('clientEmail'); // Updated ID
         const invoiceDateInput = document.getElementById('invoice-date');
         const dueDateInput = document.getElementById('due-date');
+        const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); // New: Invoice Details Textarea
         const laborHoursInput = document.getElementById('labor-hours');
         const hourlyRateInput = document.getElementById('hourly-rate');
         const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
@@ -415,18 +429,18 @@
         // Set default dates and company name
         window.onload = function() {
             const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-            const dd = String(today.getDate()).padStart(2, '0');
-            invoiceDateInput.value = `${yyyy}-${mm}-${dd}`;
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const day = String(today.getDate()).padStart(2, '0');
+            invoiceDateInput.value = `${year}-${month}-${day}`;
 
             // Set due date to 7 days from now
             const dueDate = new Date();
             dueDate.setDate(today.getDate() + 7);
-            const dueYyyy = dueDate.getFullYear();
-            const dueMm = String(dueDate.getMonth() + 1).padStart(2, '0');
-            const dueDd = String(dueDate.getDate()).padStart(2, '0');
-            dueDateInput.value = `${dueYyyy}-${dueMm}-${dueDd}`;
+            const dueYear = dueDate.getFullYear();
+            const dueMonth = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dueDay = String(dueDate.getDate()).padStart(2, '0');
+            dueDateInput.value = `${dueYear}-${dueMonth}-${dueDay}`;
             renderEditableItems(); // Initial render for empty state
         };
 
