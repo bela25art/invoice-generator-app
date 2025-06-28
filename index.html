@@ -203,13 +203,14 @@
 
             <!-- Receipt Upload Section -->
             <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Receipt Photo</h2>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Receipt Photo(s)</h2>
                 <div class="input-group mb-4">
-                    <label for="receipt-photo" class="text-gray-700">Select Receipt Image:</label>
-                    <input type="file" id="receipt-photo" accept="image/*" class="w-full text-gray-700 p-2 border border-gray-300 rounded-md">
+                    <label for="receipt-photo" class="text-gray-700">Select Receipt Image(s):</label>
+                    <!-- Added 'multiple' attribute here -->
+                    <input type="file" id="receipt-photo" accept="image/*" multiple class="w-full text-gray-700 p-2 border border-gray-300 rounded-md">
                 </div>
                 <button id="extract-data-btn" class="btn btn-primary w-full flex items-center justify-content-center gap-2">
-                    Extract Data from Receipt
+                    Extract Data from Receipt(s)
                     <div id="extract-loading-spinner" class="loading-spinner hidden"></div>
                 </button>
                 <div id="extraction-status" class="mt-4 text-sm text-gray-600"></div>
@@ -234,6 +235,9 @@
                     </div>
                     <button id="add-manual-item-btn" class="btn btn-primary bg-purple-600 hover:bg-purple-700 mt-2 md:mt-0">Add Item Manually</button>
                 </div>
+                <!-- New: Clear All Items button -->
+                <button id="clear-all-items-btn" class="btn btn-secondary w-full mt-4 bg-red-400 hover:bg-red-500 text-white">Clear All Items</button>
+
 
                 <div id="invoice-items-management" class="mt-6 bg-white p-4 rounded-lg border border-gray-200">
                     <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Invoice Line Items:</h3>
@@ -333,9 +337,14 @@
                         <!-- Invoice items will be injected here -->
                     </tbody>
                     <tfoot>
+                        <!-- New total rows -->
                         <tr>
-                            <td colspan="3" class="text-right">Subtotal:</td>
-                            <td class="text-right" id="invoice-subtotal"></td>
+                            <td colspan="3" class="text-right">Materials Subtotal:</td>
+                            <td class="text-right" id="invoice-materials-subtotal"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-right">Labor Total:</td>
+                            <td class="text-right" id="invoice-labor-total"></td>
                         </tr>
                         <tr>
                             <td colspan="3" class="text-right">Tax:</td>
@@ -375,12 +384,6 @@
         </div>
 
         <script>
-            // Global variables for Firebase configuration, though not used in this specific app logic
-            // as we are not persisting data with Firestore. Included for compliance with general guidelines.
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
-
             let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
             let companyLogoBase64 = null; // To store the base64 string of the company logo
             let geminiApiKey = sessionStorage.getItem('geminiApiKey') || ''; // Load API key from session storage
@@ -399,17 +402,18 @@
             const manualQuantityInput = document.getElementById('manual-quantity');
             const manualUnitPriceInput = document.getElementById('manual-unit-price');
             const addManualItemBtn = document.getElementById('add-manual-item-btn');
+            const clearAllItemsBtn = document.getElementById('clear-all-items-btn'); // New clear button
             const editableItemsBody = document.getElementById('editable-items-body');
             const noItemsMessage = document.getElementById('no-items-message');
 
 
             const clientNameInput = document.getElementById('client-name');
-            const clientEmailInput = document.getElementById('clientEmail'); // Updated ID
+            const clientEmailInput = document.getElementById('clientEmail'); 
             const invoiceDateInput = document.getElementById('invoice-date');
             const dueDateInput = document.getElementById('due-date');
-            const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); // New: Invoice Details Textarea
+            const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); 
             const laborHoursInput = document.getElementById('labor-hours');
-            const hourlyRateInput = document.getElementById('hourly-rate'); // Changed default value
+            const hourlyRateInput = document.getElementById('hourly-rate'); 
             const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
             const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
 
@@ -420,17 +424,17 @@
             const displayInvoiceDate = document.getElementById('display-invoice-date');
             const displayDueDate = document.getElementById('display-due-date');
             const finalInvoiceItemsBody = document.getElementById('final-invoice-items-body');
-            const invoiceSubtotal = document.getElementById('invoice-subtotal');
+            const invoiceMaterialsSubtotal = document.getElementById('invoice-materials-subtotal'); // New
+            const invoiceLaborTotal = document.getElementById('invoice-labor-total'); // New
             const invoiceTax = document.getElementById('invoice-tax');
             const invoiceGrandTotal = document.getElementById('invoice-grand-total');
 
-            const sendEmailButton = document.getElementById('sendEmailButton'); // Get the button element
+            const sendEmailButton = document.getElementById('sendEmailButton'); 
 
             const messageModal = document.getElementById('message-modal');
             const modalMessage = document.getElementById('modal-message');
             const closeModalBtn = document.getElementById('close-modal-btn');
 
-            // NEW: API Key Modal Elements
             const apiKeyModal = document.getElementById('api-key-modal');
             const geminiApiKeyInput = document.getElementById('gemini-api-key-input');
             const saveApiKeyBtn = document.getElementById('save-api-key-btn');
@@ -472,7 +476,6 @@
                 }
             }
 
-
             // Handle saving API Key from the new modal
             saveApiKeyBtn.addEventListener('click', () => {
                 const key = geminiApiKeyInput.value.trim();
@@ -480,15 +483,14 @@
                     geminiApiKey = key;
                     sessionStorage.setItem('geminiApiKey', key); // Store for current session
                     apiKeyModal.style.display = 'none'; // Hide the modal
-                    // Optionally, re-trigger extraction if a file was already selected
-                    if (receiptPhotoInput.files[0]) {
-                        extractDataFromReceipt(); // Call the extraction logic again
+                    // After saving, if there are files already selected, try to process them
+                    if (receiptPhotoInput.files.length > 0) {
+                        processSelectedReceipts(); // Call a new function to process multiple files
                     }
                 } else {
                     showMessage("Please enter a valid Gemini API Key.");
                 }
             });
-
 
             // Function to render the editable invoice items table
             function renderEditableItems() {
@@ -518,25 +520,34 @@
 
                             if (field === 'quantity' || field === 'unit_price') {
                                 value = parseFloat(value) || 0;
-                                if (field === 'quantity' && value < 1) value = 1; // Ensure quantity is at least 1
-                                if (field === 'unit_price' && value < 0) value = 0; // Ensure unit price is not negative
+                                if (field === 'quantity' && value < 1) value = 1; 
+                                if (field === 'unit_price' && value < 0) value = 0; 
                             }
                             invoiceLineItems[index][field] = value;
-                            // Recalculate total_price if quantity or unit_price changes
                             invoiceLineItems[index].total_price = (invoiceLineItems[index].quantity || 0) * (invoiceLineItems[index].unit_price || 0);
-                            // No re-render here, as changes are live in the input fields. The final generation will use the updated `invoiceLineItems`.
                         });
                     });
 
                     editableItemsBody.querySelectorAll('button').forEach(button => {
                         button.addEventListener('click', (e) => {
                             const index = parseInt(e.target.dataset.index);
-                            invoiceLineItems.splice(index, 1); // Remove item from array
-                            renderEditableItems(); // Re-render the list to reflect deletion
+                            invoiceLineItems.splice(index, 1); 
+                            renderEditableItems(); 
                         });
                     });
                 }
             }
+
+            // Event listener for "Clear All Items" button
+            clearAllItemsBtn.addEventListener('click', () => {
+                if (confirm("Are you sure you want to clear all invoice items? This cannot be undone.")) {
+                    invoiceLineItems = []; // Empty the array
+                    renderEditableItems(); // Re-render to show empty state
+                    extractionStatusDiv.textContent = 'All items cleared.';
+                    extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
+                    extractionStatusDiv.classList.add('text-gray-600');
+                }
+            });
 
 
             // Event listener for company logo input
@@ -545,12 +556,12 @@
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        companyLogoBase64 = e.target.result; // Store base64
+                        companyLogoBase64 = e.target.result; 
                         const img = document.createElement('img');
                         img.src = companyLogoBase64;
                         img.alt = "Company Logo Preview";
-                        img.className = "h-12 object-contain rounded"; // Tailwind classes for preview
-                        logoPreviewContainer.innerHTML = ''; // Clear previous preview
+                        img.className = "h-12 object-contain rounded"; 
+                        logoPreviewContainer.innerHTML = ''; 
                         logoPreviewContainer.appendChild(img);
                     };
                     reader.readAsDataURL(file);
@@ -575,48 +586,134 @@
                     description: description,
                     quantity: quantity,
                     unit_price: unitPrice,
-                    total_price: quantity * unitPrice // Calculate total for manual item
+                    total_price: quantity * unitPrice 
                 };
 
                 invoiceLineItems.push(newItem);
-                renderEditableItems(); // Update the display
+                renderEditableItems(); 
                 manualDescriptionInput.value = '';
                 manualQuantityInput.value = '1';
                 manualUnitPriceInput.value = '0.00';
             });
 
-            // Wrapper function for extraction logic to be called from multiple places
-            async function extractDataFromReceipt() {
-                console.log('--- extractDataFromReceipt called ---'); // Initial log for function entry
-                const file = receiptPhotoInput.files[0];
-                
-                // Log the file status
-                if (file) {
-                    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
-                } else {
-                    console.log('No file selected.');
-                }
+            // Function to process a single receipt file with AI
+            async function processSingleReceipt(file) {
+                console.log(`Processing file: ${file.name}`);
+                extractLoadingSpinner.classList.remove('hidden');
+                extractionStatusDiv.textContent = `Extracting data from ${file.name}...`;
+                extractionStatusDiv.classList.remove('text-red-600', 'text-green-600');
+                extractionStatusDiv.classList.add('text-gray-600');
 
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64ImageData = reader.result.split(',')[1];
 
-                if (!file) {
-                    showMessage("Please upload a receipt photo first.");
+                        try {
+                            const prompt = `Analyze the provided receipt image. Your primary goal is to extract itemized lists (description, quantity, unit price, and total price for each item), along with the overall subtotal, tax, and grand total.
+                            * **Be resilient to image quality:** Even if parts are blurry or incomplete, attempt to infer the most probable values.
+                            * **Prioritize numerical accuracy:** All price, quantity, and total fields MUST be valid numbers (floats). If a numerical value cannot be confidently extracted or inferred, use 0.
+                            * **Handle missing data:** If a description, quantity, or unit price for an item is missing, use "N/A" for strings, or 0 for numbers, but still include the item if its existence is clear.
+                            * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty:
+                                {
+                                "items": [
+                                    {"description": "string", "quantity": number, "unit_price": number, "total_price": number}
+                                ],
+                                "subtotal": number,
+                                "tax": number,
+                                "grand_total": number
+                                }`;
+
+                            let chatHistory = [];
+                            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                            const payload = {
+                                contents: [
+                                    {
+                                        role: "user",
+                                        parts: [
+                                            { text: prompt },
+                                            {
+                                                inlineData: {
+                                                    mimeType: file.type,
+                                                    data: base64ImageData
+                                                }
+                                            }
+                                        ] 
+                                    }
+                                ], 
+                                generationConfig: {
+                                    responseMimeType: "application/json",
+                                    responseSchema: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            "items": {
+                                                "type": "ARRAY",
+                                                "items": {
+                                                    "type": "OBJECT",
+                                                    "properties": {
+                                                        "description": { "type": "STRING" },
+                                                        "quantity": { "type": "NUMBER" },
+                                                        "unit_price": { "type": "NUMBER" },
+                                                        "total_price": { "type": "NUMBER" }
+                                                    }
+                                                }
+                                            },
+                                            "subtotal": { "type": "NUMBER" },
+                                            "tax": { "type": "NUMBER" },
+                                            "grand_total": { "type": "NUMBER" }
+                                        }
+                                    }
+                                }
+                            };
+
+                            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`; 
+
+                            const response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok && result.candidates && result.candidates.length > 0 &&
+                                result.candidates[0].content && result.candidates[0].content.parts &&
+                                result.candidates[0].content.parts.length > 0) {
+                                const jsonText = result.candidates[0].content.parts[0].text;
+                                const parsedData = JSON.parse(jsonText);
+                                resolve({ success: true, items: parsedData.items || [], file: file.name });
+                            } else {
+                                let errorMessage = `Failed to extract data from ${file.name}. AI response was empty or malformed.`;
+                                if (result.error && result.error.message) {
+                                    errorMessage += ` Error: ${result.error.message}`;
+                                }
+                                showMessage(errorMessage);
+                                resolve({ success: false, error: errorMessage, file: file.name });
+                            }
+                        } catch (error) {
+                            console.error(`Error processing ${file.name}:`, error);
+                            showMessage(`An error occurred processing ${file.name}. Error: ${error.message}`);
+                            resolve({ success: false, error: error.message, file: file.name });
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // New function to handle processing multiple selected receipts
+            async function processSelectedReceipts() {
+                const files = receiptPhotoInput.files;
+                if (files.length === 0) {
+                    showMessage("No receipt photos selected for extraction.");
                     extractDataBtn.disabled = false;
                     extractLoadingSpinner.classList.add('hidden');
                     return;
                 }
 
-                // Log API key status before check
-                if (!geminiApiKey) {
-                    console.log('Gemini API key is empty. Displaying API key modal.');
-                } else {
-                    console.log('Gemini API key is present (length:', geminiApiKey.length, ').');
-                }
-
-                // If no API key is available, show the modal
                 if (!geminiApiKey) {
                     apiKeyModal.style.display = 'flex';
-                    geminiApiKeyInput.focus(); // Focus the input field
-                    extractDataBtn.disabled = false; // Re-enable button
+                    geminiApiKeyInput.focus();
+                    extractDataBtn.disabled = false;
                     extractLoadingSpinner.classList.add('hidden');
                     extractionStatusDiv.textContent = 'Enter API Key to proceed.';
                     extractionStatusDiv.classList.remove('text-green-600');
@@ -626,162 +723,40 @@
 
                 extractDataBtn.disabled = true;
                 extractLoadingSpinner.classList.remove('hidden');
-                extractionStatusDiv.textContent = 'Extracting data... This may take a moment.';
+                extractionStatusDiv.textContent = `Processing ${files.length} receipt(s)...`;
                 extractionStatusDiv.classList.remove('text-red-600', 'text-green-600');
                 extractionStatusDiv.classList.add('text-gray-600');
 
-
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    console.log('FileReader onloadend event triggered, starting API call preparation.');
-                    const base64ImageData = reader.result.split(',')[1]; // Get base64 string without data:image/jpeg;base64,
-                    console.log('Base64 image data prepared. Length:', base64ImageData.length);
-
-
-                    try {
-                        // Enhanced prompt for AI to extract structured data from the image
-                        const prompt = `Analyze the provided receipt image. Your primary goal is to extract itemized lists (description, quantity, unit price, and total price for each item), along with the overall subtotal, tax, and grand total.
-                        * **Be resilient to image quality:** Even if parts are blurry or incomplete, attempt to infer the most probable values.
-                        * **Prioritize numerical accuracy:** All price, quantity, and total fields MUST be valid numbers (floats). If a numerical value cannot be confidently extracted or inferred, use 0.
-                        * **Handle missing data:** If a description, quantity, or unit price for an item is missing, use "N/A" for strings, or 0 for numbers, but still include the item if its existence is clear.
-                        * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty:
-                            {
-                              "items": [
-                                {"description": "string", "quantity": number, "unit_price": number, "total_price": number}
-                              ],
-                              "subtotal": number,
-                              "tax": number,
-                              "grand_total": number
-                            }
-                        Example of expected output if a receipt has two items and a total:
-                        {
-                          "items": [
-                            {"description": "Espresso", "quantity": 2, "unit_price": 3.50, "total_price": 7.00},
-                            {"description": "Croissant", "quantity": 1, "unit_price": 4.25, "total_price": 4.25}
-                          ],
-                          "subtotal": 11.25,
-                          "tax": 0.89,
-                          "grand_total": 12.14
-                        }
-                        Example of expected output if very little can be extracted but the receipt seems to contain items:
-                        {
-                          "items": [
-                            {"description": "Item 1 (inferred)", "quantity": 1, "unit_price": 0, "total_price": 0}
-                          ],
-                          "subtotal": 0,
-                          "tax": 0,
-                          "grand_total": 0
-                        }`;
-
-                        let chatHistory = [];
-                        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                        const payload = {
-                            contents: [
-                                {
-                                    role: "user",
-                                    parts: [
-                                        { text: prompt },
-                                        {
-                                            inlineData: {
-                                                mimeType: file.type,
-                                                data: base64ImageData
-                                            }
-                                        }
-                                    ] 
-                                }
-                            ], 
-                            generationConfig: {
-                                responseMimeType: "application/json",
-                                responseSchema: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "items": {
-                                            "type": "ARRAY",
-                                            "items": {
-                                                "type": "OBJECT",
-                                                "properties": {
-                                                    "description": { "type": "STRING" },
-                                                    "quantity": { "type": "NUMBER" },
-                                                    "unit_price": { "type": "NUMBER" },
-                                                    "total_price": { "type": "NUMBER" }
-                                                }
-                                            }
-                                        },
-                                        "subtotal": { "type": "NUMBER" },
-                                        "tax": { "type": "NUMBER" },
-                                        "grand_total": { "type": "NUMBER" }
-                                    }
-                                }
-                            }
-                        };
-                        console.log('Sending payload to Gemini API:', payload);
-
-
-                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`; // Use the stored API key
-
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-
-                        console.log('Gemini API response status:', response.status);
-                        const result = await response.json();
-                        console.log('Gemini API raw result:', result);
-
-                        if (response.ok && result.candidates && result.candidates.length > 0 &&
-                            result.candidates[0].content && result.candidates[0].content.parts &&
-                            result.candidates[0].content.parts.length > 0) {
-                            const jsonText = result.candidates[0].content.parts[0].text;
-                            console.log('Gemini API extracted JSON text:', jsonText);
-                            const parsedData = JSON.parse(jsonText);
-                            console.log('Gemini API parsed data:', parsedData);
-
-
-                            const newlyExtractedItems = parsedData.items || [];
-
-                            if (newlyExtractedItems.length > 0) {
-                                // Add extracted items to the unified list
-                                invoiceLineItems.push(...newlyExtractedItems);
-                                extractionStatusDiv.textContent = `Successfully extracted ${newlyExtractedItems.length} items. Review and edit below.`;
-                                extractionStatusDiv.classList.add('text-green-600');
-                            } else {
-                                extractionStatusDiv.textContent = "No specific items extracted. This can happen with very unclear photos. Please try a clearer one or add items manually below.";
-                                extractionStatusDiv.classList.remove('text-green-600');
-                                extractionStatusDiv.classList.add('text-red-600');
-                            }
-                            renderEditableItems(); // Update the displayed editable list
-
-                        } else {
-                            let errorMessage = "Could not extract data. AI response was empty, malformed, or an error occurred.";
-                            if (result.error && result.error.message) {
-                                errorMessage += ` Error: ${result.error.message}`;
-                            }
-                            showMessage(errorMessage + " Please try another receipt or ensure clarity.");
-                            extractionStatusDiv.textContent = errorMessage;
-                            extractionStatusDiv.classList.remove('text-green-600');
-                            extractionStatusDiv.classList.add('text-red-600');
-                            console.error('Gemini API response not OK or data missing:', result);
-                        }
-                    } catch (error) {
-                        console.error('Error during data extraction (catch block):', error);
-                        showMessage("An error occurred during data extraction. Please ensure the image is a valid receipt and try again. Error: " + error.message);
-                        extractionStatusDiv.textContent = "Extraction error. Please try again with a clear photo or add items manually. Error: " + error.message;
-                        extractionStatusDiv.classList.remove('text-green-600');
-                        extractionStatusDiv.classList.add('text-red-600');
-                    } finally {
-                        extractDataBtn.disabled = false;
-                        extractLoadingSpinner.classList.add('hidden');
-                        console.log('--- extractDataFromReceipt finished ---'); // Final log for function exit
+                let successfulExtractions = 0;
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const result = await processSingleReceipt(file);
+                    if (result.success) {
+                        invoiceLineItems.push(...result.items);
+                        successfulExtractions++;
                     }
-                };
-                reader.readAsDataURL(file);
+                    extractionStatusDiv.textContent = `Processed ${i + 1}/${files.length} receipts.`;
+                }
+
+                if (successfulExtractions > 0) {
+                    extractionStatusDiv.textContent = `Successfully extracted items from ${successfulExtractions} of ${files.length} receipt(s). Review and edit below.`;
+                    extractionStatusDiv.classList.add('text-green-600');
+                    extractionStatusDiv.classList.remove('text-red-600');
+                } else {
+                    extractionStatusDiv.textContent = `No items extracted from any of the ${files.length} receipt(s). Please try clearer photos or add items manually.`;
+                    extractionStatusDiv.classList.add('text-red-600');
+                    extractionStatusDiv.classList.remove('text-green-600');
+                }
+                renderEditableItems(); // Re-render the editable list with all accumulated items
+                extractDataBtn.disabled = false;
+                extractLoadingSpinner.classList.add('hidden');
             }
+
 
             // Event listener for receipt photo upload and data extraction
             extractDataBtn.addEventListener('click', () => {
-                console.log('Extract Data button clicked.'); // Log when the button is clicked
-                extractDataFromReceipt(); // Call the unified function
+                console.log('Extract Data button clicked.');
+                processSelectedReceipts(); // Call the new multi-file processing function
             });
 
 
@@ -818,7 +793,7 @@
                 // Clear previous items in the final invoice display
                 finalInvoiceItemsBody.innerHTML = '';
 
-                let materialSubtotal = 0;
+                let materialsSubtotal = 0; // Renamed for clarity
 
                 // Add all items from invoiceLineItems to the final invoice
                 if (invoiceLineItems.length > 0) {
@@ -827,7 +802,7 @@
                         const unitPrice = item.unit_price || 0;
                         const itemTotalPrice = quantity * unitPrice;
 
-                        materialSubtotal += itemTotalPrice;
+                        materialsSubtotal += itemTotalPrice;
 
                         const row = document.createElement('tr');
                         row.innerHTML = `
@@ -838,6 +813,13 @@
                         `;
                         finalInvoiceItemsBody.appendChild(row);
                     });
+                }
+                
+                // Add a visual separator if both materials and labor exist
+                if (materialsSubtotal > 0 && laborTotal > 0) {
+                    const separatorRow = document.createElement('tr');
+                    separatorRow.innerHTML = `<td colspan="4" class="py-2 bg-gray-50 text-gray-700 text-center text-sm">--- End of Material Items ---</td>`;
+                    finalInvoiceItemsBody.appendChild(separatorRow);
                 }
 
                 // Add labor cost as an item if applicable
@@ -860,10 +842,8 @@
                 }
 
 
-                const subtotal = materialSubtotal + laborTotal;
-                // Tax is now 0 as per user request
                 const tax = 0; 
-                const grandTotal = subtotal + tax;
+                const grandTotal = materialsSubtotal + laborTotal + tax; // Sum materials and labor for grand total
 
                 // Populate invoice display with company name and logo
                 displayCompanyName.textContent = companyName;
@@ -876,8 +856,9 @@
                 displayClientName.textContent = clientName;
                 displayInvoiceDate.textContent = invoiceDate;
                 displayDueDate.textContent = dueDate;
-                invoiceSubtotal.textContent = `$${subtotal.toFixed(2)}`;
-                invoiceTax.textContent = `No Tax`; // Display "No Tax"
+                invoiceMaterialsSubtotal.textContent = `$${materialsSubtotal.toFixed(2)}`; // Set new material subtotal
+                invoiceLaborTotal.textContent = `$${laborTotal.toFixed(2)}`; // Set new labor total
+                invoiceTax.textContent = `No Tax`; 
                 invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
 
                 invoiceOutputDiv.classList.remove('hidden');
@@ -932,6 +913,8 @@
                 const invoiceDate = document.getElementById('invoice-date').value;
                 const dueDate = document.getElementById('due-date').value;
                 const grandTotal = document.getElementById('invoice-grand-total').textContent;
+                const materialsSubtotal = document.getElementById('invoice-materials-subtotal').textContent;
+                const laborTotal = document.getElementById('invoice-labor-total').textContent;
                 const additionalNotes = document.getElementById('invoiceDetails').value.trim();
 
                 if (!clientEmail) { showMessage('Please enter the customer\'s email address.'); return; }
@@ -989,14 +972,24 @@
 
                 const laborHours = parseFloat(document.getElementById('labor-hours').value) || 0;
                 const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
-                const laborTotal = laborHours * hourlyRate;
-                if (laborTotal > 0) {
+                const laborTotalVal = laborHours * hourlyRate; // Use a new variable to avoid conflict with `laborTotal` from element
+
+                if (invoiceLineItems.length > 0 && laborTotalVal > 0) {
+                    htmlBody += `
+                        <tr>
+                            <td colspan="4" style="text-align: center; background-color: #f9fafb; font-weight: 600; padding: 10px;">--- End of Material Items ---</td>
+                        </tr>
+                    `;
+                }
+
+
+                if (laborTotalVal > 0) {
                     htmlBody += `
                                 <tr>
                                     <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
                                     <td>1</td>
-                                    <td>$${laborTotal.toFixed(2)}</td>
-                                    <td class='text-right'>$${laborTotal.toFixed(2)}</td>
+                                    <td>$${laborTotalVal.toFixed(2)}</td>
+                                    <td class='text-right'>$${laborTotalVal.toFixed(2)}</td>
                                 </tr>
                     `;
                 }
@@ -1005,8 +998,12 @@
                             </tbody>
                             <tfoot>
                                 <tr class='total-row'>
-                                    <td colspan='3' class='text-right'>Subtotal:</td>
-                                    <td class='text-right'>${document.getElementById('invoice-subtotal').textContent}</td>
+                                    <td colspan='3' class='text-right'>Materials Subtotal:</td>
+                                    <td class='text-right'>${materialsSubtotal}</td>
+                                </tr>
+                                <tr class='total-row'>
+                                    <td colspan='3' class='text-right'>Labor Total:</td>
+                                    <td class='text-right'>${laborTotal}</td>
                                 </tr>
                                 <tr class='total-row'>
                                     <td colspan='3' class='text-right'>Tax:</td>
