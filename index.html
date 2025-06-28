@@ -668,15 +668,32 @@
 
                             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`; 
 
+                            // Log API key length and a snippet for debugging
+                            console.log('Sending API request with key length:', geminiApiKey.length, 'key starts with:', geminiApiKey.substring(0, 5) + '...');
+
                             const response = await fetch(apiUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
                             });
 
+                            // Explicitly check for non-OK response first
+                            if (!response.ok) {
+                                const errorData = await response.json().catch(() => ({ message: 'Unknown error or non-JSON response from API.' }));
+                                let errorMessage = `API Error for ${file.name} (Status: ${response.status}): ${errorData.message || response.statusText}.`;
+                                if (response.status === 401 || response.status === 403) {
+                                    errorMessage += " Please check your Gemini API key's validity and permissions.";
+                                }
+                                showMessage(errorMessage);
+                                console.error('API Error Response:', errorData); 
+                                resolve({ success: false, error: errorMessage, file: file.name });
+                                return; 
+                            }
+
+                            // If response is OK, proceed to parse
                             const result = await response.json();
 
-                            if (response.ok && result.candidates && result.candidates.length > 0 &&
+                            if (result.candidates && result.candidates.length > 0 &&
                                 result.candidates[0].content && result.candidates[0].content.parts &&
                                 result.candidates[0].content.parts.length > 0) {
                                 const rawJsonText = result.candidates[0].content.parts[0].text;
@@ -696,7 +713,7 @@
                                 const parsedData = JSON.parse(jsonString);
                                 resolve({ success: true, items: parsedData.items || [], file: file.name });
                             } else {
-                                let errorMessage = `Failed to extract data from ${file.name}. AI response was empty or malformed.`;
+                                let errorMessage = `Could not extract data from ${file.name}. AI response was empty or malformed.`;
                                 if (result.error && result.error.message) {
                                     errorMessage += ` Error: ${result.error.message}`;
                                 }
@@ -704,7 +721,7 @@
                                 resolve({ success: false, error: errorMessage, file: file.name });
                             }
                         } catch (error) {
-                            console.error(`Error processing ${file.name}:`, error);
+                            console.error(`Error processing ${file.name} (catch block):`, error);
                             showMessage(`An error occurred processing ${file.name}. Error: ${error.message}`);
                             resolve({ success: false, error: error.message, file: file.name });
                         }
