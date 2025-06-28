@@ -1,0 +1,16 @@
+{
+  "name": "invoice-email-sender",
+  "version": "1.0.0",
+  "description": "Google Cloud Function for sending invoice emails.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}
