@@ -614,7 +614,7 @@
                             * **Be resilient to image quality:** Even if parts are blurry or incomplete, attempt to infer the most probable values.
                             * **Prioritize numerical accuracy:** All price, quantity, and total fields MUST be valid numbers (floats). If a numerical value cannot be confidently extracted or inferred, use 0.
                             * **Handle missing data:** If a description, quantity, or unit price for an item is missing, use "N/A" for strings, or 0 for numbers, but still include the item if its existence is clear.
-                            * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty:
+                            * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty. ENCLOSE THE ENTIRE JSON OUTPUT WITHIN A MARKDOWN CODE BLOCK (e.g., \`\`\`json { ... } \`\`\`):
                                 {
                                 "items": [
                                     {"description": "string", "quantity": number, "unit_price": number, "total_price": number}
@@ -679,8 +679,21 @@
                             if (response.ok && result.candidates && result.candidates.length > 0 &&
                                 result.candidates[0].content && result.candidates[0].content.parts &&
                                 result.candidates[0].content.parts.length > 0) {
-                                const jsonText = result.candidates[0].content.parts[0].text;
-                                const parsedData = JSON.parse(jsonText);
+                                const rawJsonText = result.candidates[0].content.parts[0].text;
+                                console.log('Gemini API extracted raw text:', rawJsonText);
+
+                                // Extract JSON from markdown code block if present
+                                const jsonMatch = rawJsonText.match(/```json\n([\s\S]*?)\n```/);
+                                let jsonString;
+                                if (jsonMatch && jsonMatch[1]) {
+                                    jsonString = jsonMatch[1];
+                                    console.log('Extracted JSON from markdown block:', jsonString);
+                                } else {
+                                    jsonString = rawJsonText; // Fallback if no markdown block
+                                    console.log('No markdown block found, using raw text as JSON:', jsonString);
+                                }
+                                
+                                const parsedData = JSON.parse(jsonString);
                                 resolve({ success: true, items: parsedData.items || [], file: file.name });
                             } else {
                                 let errorMessage = `Failed to extract data from ${file.name}. AI response was empty or malformed.`;
