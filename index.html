@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -587,12 +587,29 @@
 
             // Wrapper function for extraction logic to be called from multiple places
             async function extractDataFromReceipt() {
+                console.log('--- extractDataFromReceipt called ---'); // Initial log for function entry
                 const file = receiptPhotoInput.files[0];
+                
+                // Log the file status
+                if (file) {
+                    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+                } else {
+                    console.log('No file selected.');
+                }
+
+
                 if (!file) {
                     showMessage("Please upload a receipt photo first.");
                     extractDataBtn.disabled = false;
                     extractLoadingSpinner.classList.add('hidden');
                     return;
+                }
+
+                // Log API key status before check
+                if (!geminiApiKey) {
+                    console.log('Gemini API key is empty. Displaying API key modal.');
+                } else {
+                    console.log('Gemini API key is present (length:', geminiApiKey.length, ').');
                 }
 
                 // If no API key is available, show the modal
@@ -616,9 +633,9 @@
 
                 const reader = new FileReader();
                 reader.onloadend = async () => {
+                    console.log('FileReader onloadend event triggered, starting API call preparation.');
                     const base64ImageData = reader.result.split(',')[1]; // Get base64 string without data:image/jpeg;base64,
-                    console.log('File selected. Type:', file.type, 'Size:', file.size, 'bytes');
-                    console.log('Base64 image data length (after split):', base64ImageData.length);
+                    console.log('Base64 image data prepared. Length:', base64ImageData.length);
 
 
                     try {
@@ -755,13 +772,15 @@
                     } finally {
                         extractDataBtn.disabled = false;
                         extractLoadingSpinner.classList.add('hidden');
+                        console.log('--- extractDataFromReceipt finished ---'); // Final log for function exit
                     }
                 };
                 reader.readAsDataURL(file);
-            });
+            }
 
             // Event listener for receipt photo upload and data extraction
             extractDataBtn.addEventListener('click', () => {
+                console.log('Extract Data button clicked.'); // Log when the button is clicked
                 extractDataFromReceipt(); // Call the unified function
             });
 
