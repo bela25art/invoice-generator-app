@@ -645,6 +645,9 @@
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     const base64ImageData = reader.result.split(',')[1]; // Get base64 string without data:image/jpeg;base64,
+                    console.log('File selected. Type:', file.type, 'Size:', file.size, 'bytes');
+                    console.log('Base64 image data length (after split):', base64ImageData.length);
+
 
                     try {
                         // Enhanced prompt for AI to extract structured data from the image
@@ -722,6 +725,8 @@
                                 }
                             }
                         };
+                        console.log('Sending payload to Gemini API:', payload);
+
 
                         const apiKey = ""; // Canvas will provide this at runtime
                         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -732,12 +737,18 @@
                             body: JSON.stringify(payload)
                         });
 
+                        console.log('Gemini API response status:', response.status);
                         const result = await response.json();
-                        if (result.candidates && result.candidates.length > 0 &&
+                        console.log('Gemini API raw result:', result);
+
+                        if (response.ok && result.candidates && result.candidates.length > 0 &&
                             result.candidates[0].content && result.candidates[0].content.parts &&
                             result.candidates[0].content.parts.length > 0) {
                             const jsonText = result.candidates[0].content.parts[0].text;
+                            console.log('Gemini API extracted JSON text:', jsonText);
                             const parsedData = JSON.parse(jsonText);
+                            console.log('Gemini API parsed data:', parsedData);
+
 
                             const newlyExtractedItems = parsedData.items || [];
 
@@ -754,15 +765,20 @@
                             renderEditableItems(); // Update the displayed editable list
 
                         } else {
-                            showMessage("Could not extract data. The AI response was empty or malformed. Please try another receipt or ensure clarity.");
-                            extractionStatusDiv.textContent = "Extraction failed: Empty or malformed AI response. Please try a clearer photo or add items manually.";
+                            let errorMessage = "Could not extract data. AI response was empty, malformed, or an error occurred.";
+                            if (result.error && result.error.message) {
+                                errorMessage += ` Error: ${result.error.message}`;
+                            }
+                            showMessage(errorMessage + " Please try another receipt or ensure clarity.");
+                            extractionStatusDiv.textContent = errorMessage;
                             extractionStatusDiv.classList.remove('text-green-600');
                             extractionStatusDiv.classList.add('text-red-600');
+                            console.error('Gemini API response not OK or data missing:', result);
                         }
                     } catch (error) {
-                        console.error('Error extracting data:', error);
+                        console.error('Error during data extraction (catch block):', error);
                         showMessage("An error occurred during data extraction. Please ensure the image is a valid receipt and try again. Error: " + error.message);
-                        extractionStatusDiv.textContent = "Extraction error. Please try again with a clear photo or add items manually.";
+                        extractionStatusDiv.textContent = "Extraction error. Please try again with a clear photo or add items manually. Error: " + error.message;
                         extractionStatusDiv.classList.remove('text-green-600');
                         extractionStatusDiv.classList.add('text-red-600');
                     } finally {
