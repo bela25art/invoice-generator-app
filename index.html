@@ -9,8 +9,8 @@
         <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <!-- Tailwind CSS CDN -->
-        <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-        <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap)" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             body {
                 font-family: 'Inter', sans-serif;
@@ -599,10 +599,8 @@
             // Function to process a single receipt file with AI
             async function processSingleReceipt(file) {
                 console.log(`[${file.name}] Starting processing...`);
-                extractLoadingSpinner.classList.remove('hidden');
-                extractionStatusDiv.textContent = `Extracting data from ${file.name}...`;
-                extractionStatusDiv.classList.remove('text-red-600', 'text-green-600');
-                extractionStatusDiv.classList.add('text-gray-600');
+                // Note: Loading spinner and status update are handled by processSelectedReceipts
+                // to show overall progress.
 
                 return new Promise((resolve) => {
                     const reader = new FileReader();
@@ -671,11 +669,18 @@
 
                             console.log(`[${file.name}] Sending API request with key length: ${geminiApiKey.length}, key starts with: ${geminiApiKey.substring(0, 5)}...`);
 
+                            // Add a timeout for the fetch request
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+
                             const response = await fetch(apiUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
+                                body: JSON.stringify(payload),
+                                signal: controller.signal // Apply the abort signal
                             });
+
+                            clearTimeout(timeoutId); // Clear the timeout if fetch completes in time
 
                             if (!response.ok) {
                                 const errorData = await response.json().catch(() => ({ message: 'Unknown error or non-JSON response from API.' }));
@@ -683,7 +688,6 @@
                                 if (response.status === 401 || response.status === 403) {
                                     errorMessage += " Please check your Gemini API key's validity and permissions.";
                                 }
-                                showMessage(errorMessage);
                                 console.error(`[${file.name}] API Error Response:`, errorData); 
                                 resolve({ success: false, error: errorMessage, file: file.name });
                                 return; 
@@ -699,12 +703,12 @@
                                 console.log(`[${file.name}] Gemini API extracted raw text:`, rawJsonText);
 
                                 let jsonString;
-                                const jsonMatch = rawJsonText.match(/```json\s*([\s\S]*?)\s*```/); // Improved regex for optional whitespace
+                                const jsonMatch = rawJsonText.match(/```json\s*([\s\S]*?)\s*```/); 
                                 if (jsonMatch && jsonMatch[1]) {
-                                    jsonString = jsonMatch[1].trim(); // Trim whitespace from extracted JSON
+                                    jsonString = jsonMatch[1].trim(); 
                                     console.log(`[${file.name}] Extracted JSON from markdown block:`, jsonString);
                                 } else {
-                                    jsonString = rawJsonText.trim(); // Fallback to raw text, trimmed
+                                    jsonString = rawJsonText.trim(); 
                                     console.log(`[${file.name}] No markdown block found, attempting to parse raw text as JSON:`, jsonString);
                                 }
                                 
@@ -714,7 +718,6 @@
                                     resolve({ success: true, items: parsedData.items || [], file: file.name });
                                 } catch (parseError) {
                                     const jsonParseErrorMessage = `JSON Parse Error for ${file.name}: ${parseError.message}. Content was not valid JSON. Raw text received: "${jsonString}"`;
-                                    showMessage(jsonParseErrorMessage);
                                     console.error(`[${file.name}] ${jsonParseErrorMessage}`, parseError);
                                     resolve({ success: false, error: jsonParseErrorMessage, file: file.name });
                                 }
@@ -724,15 +727,24 @@
                                 if (result.error && result.error.message) {
                                     errorMessage += ` Error: ${result.error.message}`;
                                 }
-                                showMessage(errorMessage);
                                 console.error(`[${file.name}] Gemini API response not OK or data missing:`, result);
                                 resolve({ success: false, error: errorMessage, file: file.name });
                             }
                         } catch (error) {
-                            console.error(`[${file.name}] Error during data extraction (overall catch block):`, error);
-                            showMessage(`An unexpected error occurred during processing ${file.name}. Error: ${error.message}`);
-                            resolve({ success: false, error: error.message, file: file.name });
+                            if (error.name === 'AbortError') {
+                                const timeoutErrorMessage = `Processing for ${file.name} timed out after 60 seconds. Please try again or with a smaller image.`;
+                                console.error(`[${file.name}] ${timeoutErrorMessage}`);
+                                resolve({ success: false, error: timeoutErrorMessage, file: file.name });
+                            } else {
+                                console.error(`[${file.name}] Error during data extraction (overall catch block):`, error);
+                                resolve({ success: false, error: error.message, file: file.name });
+                            }
                         }
+                    };
+                    reader.onerror = (errorEvent) => {
+                        const fileReadErrorMessage = `File reading error for ${file.name}: ${reader.error ? reader.error.message : 'Unknown error'}`;
+                        console.error(`[${file.name}] ${fileReadErrorMessage}`, errorEvent);
+                        resolve({ success: false, error: fileReadErrorMessage, file: file.name });
                     };
                     reader.readAsDataURL(file);
                 });
@@ -766,6 +778,8 @@
                 extractionStatusDiv.classList.add('text-gray-600');
 
                 let successfulExtractions = 0;
+                let errorMessages = [];
+
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     extractionStatusDiv.textContent = `Processing ${file.name} (${i + 1}/${files.length})...`;
@@ -773,9 +787,12 @@
                     if (result.success) {
                         invoiceLineItems.push(...result.items);
                         successfulExtractions++;
+                    } else {
+                        errorMessages.push(result.error);
                     }
                 }
 
+                // After all files are processed
                 if (successfulExtractions > 0) {
                     extractionStatusDiv.textContent = `Successfully extracted items from ${successfulExtractions} of ${files.length} receipt(s). Review and edit below.`;
                     extractionStatusDiv.classList.add('text-green-600');
@@ -785,7 +802,14 @@
                     extractionStatusDiv.classList.add('text-red-600');
                     extractionStatusDiv.classList.remove('text-green-600');
                 }
-                renderEditableItems(); // Re-render the editable list with all accumulated items
+
+                // Show a summarized error message if any errors occurred
+                if (errorMessages.length > 0) {
+                    const combinedErrorMessage = "Errors occurred during extraction:\n" + errorMessages.join('\n');
+                    showMessage(combinedErrorMessage);
+                }
+
+                renderEditableItems(); 
                 extractDataBtn.disabled = false;
                 extractLoadingSpinner.classList.add('hidden');
             }
