@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+    <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -298,6 +298,12 @@
                         <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
                     </div>
                 </div>
+
+                <!-- New: Tax Rate Input -->
+                <div class="input-group mb-4">
+                    <label for="tax-rate" class="text-gray-700">Tax Rate (%):</label>
+                    <input type="number" id="tax-rate" value="0" min="0" step="0.01" class="mt-1">
+                </div>
             </div>
 
             <!-- Generate Invoice Section -->
@@ -415,6 +421,7 @@
             const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); 
             const laborHoursInput = document.getElementById('labor-hours');
             const hourlyRateInput = document.getElementById('hourly-rate'); 
+            const taxRateInput = document.getElementById('tax-rate'); // New: Tax Rate Input
             const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
             const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
 
@@ -852,6 +859,7 @@
                 const dueDate = dueDateInput.value;
                 const laborHours = parseFloat(laborHoursInput.value) || 0;
                 const hourlyRate = parseFloat(hourlyRateInput.value) || 0;
+                const taxRate = parseFloat(taxRateInput.value) || 0; // Get tax rate
 
                 if (!companyName || !clientName || !invoiceDate || !dueDate) {
                     showMessage("Please fill in all required invoice details (Company Name, Client Name, Invoice Date, Due Date).");
@@ -873,7 +881,7 @@
                 // Clear previous items in the final invoice display
                 finalInvoiceItemsBody.innerHTML = '';
 
-                let materialsSubtotal = 0; // Renamed for clarity
+                let materialsSubtotal = 0; 
 
                 // Add all items from invoiceLineItems to the final invoice
                 if (invoiceLineItems.length > 0) {
@@ -895,6 +903,9 @@
                     });
                 }
                 
+                // Calculate materials tax
+                const materialsTax = materialsSubtotal * (taxRate / 100);
+
                 // Add a visual separator if both materials and labor exist
                 if (materialsSubtotal > 0 && laborTotal > 0) {
                     const separatorRow = document.createElement('tr');
@@ -912,7 +923,7 @@
                         <td class="text-right">$${laborTotal.toFixed(2)}</td>
                     `;
                     finalInvoiceItemsBody.appendChild(laborRow);
-                } else if (invoiceLineItems.length === 0) {
+                } else if (invoiceLineItems.length === 0 && laborTotal === 0) { // Condition updated to include tax even if no materials/labor
                      // If no items extracted and no labor, show a message in the invoice itself
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -922,8 +933,7 @@
                 }
 
 
-                const tax = 0; 
-                const grandTotal = materialsSubtotal + laborTotal + tax; // Sum materials and labor for grand total
+                const grandTotal = materialsSubtotal + materialsTax + laborTotal; // Sum materials, tax, and labor for grand total
 
                 // Populate invoice display with company name and logo
                 displayCompanyName.textContent = companyName;
@@ -936,9 +946,9 @@
                 displayClientName.textContent = clientName;
                 displayInvoiceDate.textContent = invoiceDate;
                 displayDueDate.textContent = dueDate;
-                invoiceMaterialsSubtotal.textContent = `$${materialsSubtotal.toFixed(2)}`; // Set new material subtotal
-                invoiceLaborTotal.textContent = `$${laborTotal.toFixed(2)}`; // Set new labor total
-                invoiceTax.textContent = `No Tax`; 
+                invoiceMaterialsSubtotal.textContent = `$${materialsSubtotal.toFixed(2)}`; 
+                invoiceLaborTotal.textContent = `$${laborTotal.toFixed(2)}`; 
+                invoiceTax.textContent = `$${materialsTax.toFixed(2)}`; // Display calculated tax
                 invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
 
                 invoiceOutputDiv.classList.remove('hidden');
@@ -992,9 +1002,13 @@
                 const clientEmail = document.getElementById('clientEmail').value.trim();
                 const invoiceDate = document.getElementById('invoice-date').value;
                 const dueDate = document.getElementById('due-date').value;
+                
+                // Retrieve calculated values directly from the display elements
                 const grandTotal = document.getElementById('invoice-grand-total').textContent;
                 const materialsSubtotal = document.getElementById('invoice-materials-subtotal').textContent;
                 const laborTotal = document.getElementById('invoice-labor-total').textContent;
+                const invoiceTaxValue = document.getElementById('invoice-tax').textContent; // Get the displayed tax value
+
                 const additionalNotes = document.getElementById('invoiceDetails').value.trim();
 
                 if (!clientEmail) { showMessage('Please enter the customer\'s email address.'); return; }
@@ -1052,7 +1066,7 @@
 
                 const laborHours = parseFloat(document.getElementById('labor-hours').value) || 0;
                 const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
-                const laborTotalVal = laborHours * hourlyRate; // Use a new variable to avoid conflict with `laborTotal` from element
+                const laborTotalVal = laborHours * hourlyRate; 
 
                 if (invoiceLineItems.length > 0 && laborTotalVal > 0) {
                     htmlBody += `
@@ -1087,7 +1101,7 @@
                                 </tr>
                                 <tr class='total-row'>
                                     <td colspan='3' class='text-right'>Tax:</td>
-                                    <td class='text-right'>No Tax</td>
+                                    <td class='text-right'>${invoiceTaxValue}</td>
                                 </tr>
                                 <tr class='total-row'>
                                     <td colspan='3' class='text-right'>Grand Total:</td>
