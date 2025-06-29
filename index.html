@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+  <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -374,7 +374,8 @@
             <div id="api-key-modal" class="modal">
                 <div class="modal-content">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">Enter Google Gemini API Key</h3>
-                    <p class="text-gray-700 mb-3">To enable AI receipt data extraction, please enter your Google Gemini API Key. This key will only be stored temporarily in your browser's session and will not be saved or sent to any server.</p>
+                    <p class="text-gray-700 mb-3">To enable AI receipt data extraction, please enter your Google Gemini API Key.</p>
+                    <p class="text-gray-700 text-sm mb-4">This key will be saved locally in your browser (`localStorage`) to avoid re-entry for future sessions on this device. It will NOT be sent to any server other than Google's Gemini API.</p>
                     <input type="text" id="gemini-api-key-input" placeholder="Paste your API Key here..." class="w-full p-2 border rounded-md">
                     <button id="save-api-key-btn" class="btn btn-primary w-full mt-4">Save Key & Continue</button>
                     <p class="warning mt-2">**Warning:** Do not share your API key publicly. For production, consider using a secure backend proxy.</p>
@@ -386,7 +387,7 @@
         <script>
             let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
             let companyLogoBase64 = null; // To store the base64 string of the company logo
-            let geminiApiKey = sessionStorage.getItem('geminiApiKey') || ''; // Load API key from session storage
+            let geminiApiKey = localStorage.getItem('geminiApiKey') || ''; // Load API key from localStorage
 
             // Get DOM elements
             const companyNameInput = document.getElementById('company-name');
@@ -484,7 +485,7 @@
                 const key = geminiApiKeyInput.value.trim();
                 if (key) {
                     geminiApiKey = key;
-                    sessionStorage.setItem('geminiApiKey', key); // Store for current session
+                    localStorage.setItem('geminiApiKey', key); // Store for current session
                     apiKeyModal.style.display = 'none'; // Hide the modal
                     // After saving, if there are files already selected, try to process them
                     if (receiptPhotoInput.files.length > 0) {
