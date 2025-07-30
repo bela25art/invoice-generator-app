@@ -1,1173 +1,946 @@
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Bela Art Succulents AI Invoice Generator</title>
-        <!-- Favicon and Apple Touch Icon -->
-        <link rel="icon" type="image/png" href="favicon.png" sizes="32x32">
-        <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <!-- Tailwind CSS CDN -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-        <style>
-            body {
-                font-family: 'Inter', sans-serif;
-                background-color: #f0f2f5;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bela Art Succulents AI Invoice Generator</title>
+    <!-- Favicon and Apple Touch Icon -->
+    <link rel="icon" type="image/png" href="favicon.png" sizes="32x32">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .input-group input[type="text"],
+        .input-group input[type="number"],
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #374151;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary:hover {
+            background-color: #4f46e5;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .invoice-table th, .invoice-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .invoice-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .invoice-table tfoot td {
+            font-weight: 600;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            position: relative;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #6366f1; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Styles for editable items table */
+        .editable-item-row td {
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        .editable-item-row input[type="text"],
+        .editable-item-row input[type="number"] {
+            padding: 0.3rem 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            width: 100%;
+        }
+        .editable-item-row button {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        .editable-item-row button:hover {
+            background-color: #dc2626;
+        }
+
+        /* New API Key Modal Styles */
+        #api-key-modal .modal-content {
+            width: 90%;
+            max-width: 450px;
+        }
+        #api-key-modal input {
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            width: 100%;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        #api-key-modal button {
+            background-color: #10b981; /* Green color for submit */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #api-key-modal button:hover {
+            background-color: #059669;
+        }
+        #api-key-modal p.warning {
+            font-size: 0.875rem;
+            color: #ef4444;
+            margin-top: 0.75rem;
+        }
+
+        /* Print specific styles */
+        @media print {
+            body * {
+                visibility: hidden; /* Hide everything by default */
             }
-            .container {
-                max-width: 900px;
+            #invoice-output, #invoice-output * {
+                visibility: visible; /* Make only invoice output visible */
             }
-            .input-group label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 600;
-                color: #333;
-            }
-            .input-group input[type="text"],
-            .input-group input[type="number"],
-            .input-group textarea,
-            .input-group select {
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid #d1d5db;
-                border-radius: 0.5rem;
-                font-size: 1rem;
-                color: #374151;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-                transition: border-color 0.2s;
-            }
-            .input-group input:focus,
-            .input-group textarea:focus,
-            .input-group select:focus {
-                outline: none;
-                border-color: #6366f1;
-                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-            }
-            .btn {
-                padding: 0.75rem 1.5rem;
-                border-radius: 0.5rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: background-color 0.2s, box-shadow 0.2s;
-            }
-            .btn-primary {
-                background-color: #6366f1;
-                color: white;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            .btn-primary:hover {
-                background-color: #4f46e5;
-                box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-            }
-            .btn-secondary {
-                background-color: #e5e7eb;
-                color: #374151;
-                border: 1px solid #d1d5db;
-            }
-            .btn-secondary:hover {
-                background-color: #d1d5db;
-            }
-            .invoice-table th, .invoice-table td {
-                padding: 0.75rem;
-                text-align: left;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            .invoice-table th {
-                background-color: #f9fafb;
-                font-weight: 600;
-                color: #4b5563;
-            }
-            .invoice-table tfoot td {
-                font-weight: 600;
-            }
-            .modal {
-                display: none; /* Hidden by default */
-                position: fixed; /* Stay in place */
-                z-index: 1000; /* Sit on top */
+            #invoice-output {
+                position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%; /* Full width */
-                height: 100%; /* Full height */
-                overflow: auto; /* Enable scroll if needed */
-                background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-                align-items: center;
-                justify-content: center;
+                width: 100%; /* Ensure it takes full width for printing */
+                padding: 0 !important; /* Remove padding for print layout */
+                margin: 0 !important; /* Remove margin for print layout */
+                box-shadow: none !important; /* Remove box shadow for print */
+                border: none !important; /* Remove border for print */
+                background-color: white !important; /* Ensure white background */
             }
-            .modal-content {
-                background-color: #fefefe;
-                margin: auto;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                max-width: 500px;
-                position: relative;
+            .btn, .input-group, h1, h2, #extraction-status, #invoice-items-management, .bg-blue-50, .bg-gray-50, .bg-purple-50, .modal {
+                display: none !important; /* Explicitly hide control elements */
             }
-            .close-button {
-                position: absolute;
-                top: 10px;
-                right: 20px;
-                font-size: 24px;
-                font-weight: bold;
-                cursor: pointer;
-            }
-            .loading-spinner {
-                border: 4px solid #f3f3f3; /* Light grey */
-                border-top: 4px solid #6366f1; /* Blue */
-                border-radius: 50%;
-                width: 30px;
-                height: 30px;
-                animation: spin 1s linear infinite;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            /* Styles for editable items table */
-            .editable-item-row td {
-                padding: 0.5rem;
-                vertical-align: middle;
-            }
-            .editable-item-row input[type="text"],
-            .editable-item-row input[type="number"] {
-                padding: 0.3rem 0.5rem;
-                border: 1px solid #d1d5db;
-                border-radius: 0.25rem;
+            /* Ensure tables and content print well */
+            .invoice-table {
                 width: 100%;
+                border-collapse: collapse;
             }
-            .editable-item-row button {
-                background-color: #ef4444;
-                color: white;
-                padding: 0.25rem 0.5rem;
-                border-radius: 0.25rem;
-                font-size: 0.875rem;
+            .invoice-table th, .invoice-table td {
+                border: 1px solid #ccc; /* Add borders for print clarity */
+                padding: 8px;
             }
-            .editable-item-row button:hover {
-                background-color: #dc2626;
+            .invoice-table th {
+                background-color: #f0f0f0; /* Light background for headers */
             }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-content-center p-4">
+    <div class="container bg-white rounded-lg shadow-xl p-6 md:p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Bela Art Succulents AI Invoice Generator</h1>
 
-            /* New API Key Modal Styles */
-            #api-key-modal .modal-content {
-                width: 90%;
-                max-width: 450px;
-            }
-            #api-key-modal input {
-                border: 1px solid #d1d5db;
-                border-radius: 0.5rem;
-                padding: 0.75rem;
-                width: 100%;
-                margin-top: 0.5rem;
-                margin-bottom: 1rem;
-            }
-            #api-key-modal button {
-                background-color: #10b981; /* Green color for submit */
-                color: white;
-                padding: 0.75rem 1.5rem;
-                border-radius: 0.5rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: background-color 0.2s;
-            }
-            #api-key-modal button:hover {
-                background-color: #059669;
-            }
-            #api-key-modal p.warning {
-                font-size: 0.875rem;
-                color: #ef4444;
-                margin-top: 0.75rem;
-            }
-
-            /* Print specific styles */
-            @media print {
-                body * {
-                    visibility: hidden; /* Hide everything by default */
-                }
-                #invoice-output, #invoice-output * {
-                    visibility: visible; /* Make only invoice output visible */
-                }
-                #invoice-output {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%; /* Ensure it takes full width for printing */
-                    padding: 0 !important; /* Remove padding for print layout */
-                    margin: 0 !important; /* Remove margin for print layout */
-                    box-shadow: none !important; /* Remove box shadow for print */
-                    border: none !important; /* Remove border for print */
-                    background-color: white !important; /* Ensure white background */
-                }
-                .btn, .input-group, h1, h2, #extraction-status, #invoice-items-management, .bg-blue-50, .bg-gray-50, .bg-purple-50, .modal {
-                    display: none !important; /* Explicitly hide control elements */
-                }
-                /* Ensure tables and content print well */
-                .invoice-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                .invoice-table th, .invoice-table td {
-                    border: 1px solid #ccc; /* Add borders for print clarity */
-                    padding: 8px;
-                }
-                .invoice-table th {
-                    background-color: #f0f0f0; /* Light background for headers */
-                }
-            }
-        </style>
-    </head>
-    <body class="bg-gray-100 min-h-screen flex items-center justify-content-center p-4">
-        <div class="container bg-white rounded-lg shadow-xl p-6 md:p-8 space-y-6">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Bela Art Succulents AI Invoice Generator</h1>
-
-            <!-- Company Information Section -->
-            <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                <h2 class="text-2xl font-semibold text-blue-700 mb-4">Your Company Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="input-group">
-                        <label for="company-name" class="text-blue-700">Company Name:</label>
-                        <input type="text" id="company-name" placeholder="Your Company Inc." value="Bela Art Succulents" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="company-logo" class="text-blue-700">Company Logo:</label>
-                        <input type="file" id="company-logo" accept="image/*" class="w-full text-blue-700 p-2 border border-blue-300 rounded-md">
-                        <div class="mt-2" id="logo-preview-container">
-                            <!-- Logo preview will be displayed here -->
-                        </div>
+        <!-- Company Information Section -->
+        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Your Company Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="company-name" class="text-blue-700">Company Name:</label>
+                    <input type="text" id="company-name" placeholder="Your Company Inc." value="Bela Art Succulents" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="company-logo" class="text-blue-700">Company Logo:</label>
+                    <input type="file" id="company-logo" accept="image/*" class="w-full text-blue-700 p-2 border border-blue-300 rounded-md">
+                    <div class="mt-2" id="logo-preview-container">
+                        <!-- Logo preview will be displayed here -->
                     </div>
                 </div>
             </div>
-
-            <!-- Receipt Upload Section -->
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Receipt Photo(s)</h2>
-                <div class="input-group mb-4">
-                    <label for="receipt-photo" class="text-gray-700">Select Receipt Image(s):</label>
-                    <!-- Added 'multiple' attribute here -->
-                    <input type="file" id="receipt-photo" accept="image/*" multiple class="w-full text-gray-700 p-2 border border-gray-300 rounded-md">
-                </div>
-                <button id="extract-data-btn" class="btn btn-primary w-full flex items-center justify-content-center gap-2">
-                    Extract Data from Receipt(s)
-                    <div id="extract-loading-spinner" class="loading-spinner hidden"></div>
-                </button>
-                <div id="extraction-status" class="mt-4 text-sm text-gray-600"></div>
-            </div>
-
-            <!-- Manual Item Entry Section -->
-            <div class="bg-purple-50 p-6 rounded-lg border border-purple-200">
-                <h2 class="text-2xl font-semibold text-purple-700 mb-4">2. Add/Edit Invoice Items</h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
-                    <div class="input-group md:col-span-2">
-                        <label for="manual-description" class="text-purple-700">Description:</label>
-                        <input type="text" id="manual-description" placeholder="Service fee, Product XYZ" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="manual-quantity" class="text-purple-700">Qty:</label>
-                        <input type="number" id="manual-quantity" value="1" min="0" step="1" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="manual-unit-price" class="text-purple-700">Unit Price ($):</label>
-                        <input type="number" id="manual-unit-price" value="0.00" min="0" step="0.01" class="mt-1">
-                    </div>
-                    <button id="add-manual-item-btn" class="btn btn-primary bg-purple-600 hover:bg-purple-700 mt-2 md:mt-0">Add Item Manually</button>
-                </div>
-                <!-- New: Clear All Items button -->
-                <button id="clear-all-items-btn" class="btn btn-secondary w-full mt-4 bg-red-400 hover:bg-red-500 text-white">Clear All Items</button>
-
-
-                <div id="invoice-items-management" class="mt-6 bg-white p-4 rounded-lg border border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Invoice Line Items:</h3>
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr>
-                                <th class="w-1/2 text-left p-2">Description</th>
-                                <th class="w-1/6 text-left p-2">Qty</th>
-                                <th class="w-1/6 text-left p-2">Unit Price</th>
-                                <th class="w-1/6 text-left p-2">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="editable-items-body">
-                            <!-- Editable items will be injected here -->
-                            <tr><td colspan="4" class="text-center text-gray-500 p-4" id="no-items-message">No items added yet.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-
-            <!-- Invoice Details Section -->
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Invoice Details</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="input-group">
-                        <label for="client-name" class="text-gray-700">Client Name:</label>
-                        <input type="text" id="client-name" placeholder="John Doe Services" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="clientEmail" class="text-gray-700">Customer Email:</label>
-                        <input type="email" id="clientEmail" placeholder="customer@example.com" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="invoice-date" class="text-gray-700">Invoice Date:</label>
-                        <input type="date" id="invoice-date" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="due-date" class="text-gray-700">Due Date:</label>
-                        <input type="date" id="due-date" class="mt-1">
-                    </div>
-                </div>
-
-                <div class="input-group mb-4">
-                    <label for="invoiceDetails" class="text-gray-700">Additional Invoice Notes:</label>
-                    <textarea id="invoiceDetails" placeholder="Add any specific notes or terms for this invoice here..." rows="4" class="mt-1"></textarea>
-                </div>
-
-
-                <h3 class="text-xl font-semibold text-gray-700 mb-3">Labor Cost</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="input-group">
-                        <label for="labor-hours" class="text-gray-700">Labor Hours:</label>
-                        <input type="number" id="labor-hours" value="0" min="0" step="0.5" class="mt-1">
-                    </div>
-                    <div class="input-group">
-                        <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
-                        <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
-                    </div>
-                </div>
-
-                <!-- New: Tax Rate Input -->
-                <div class="input-group mb-4">
-                    <label for="tax-rate" class="text-gray-700">Tax Rate (%):</label>
-                    <input type="number" id="tax-rate" value="0" min="0" step="0.01" class="mt-1">
-                </div>
-            </div>
-
-            <!-- Generate Invoice Section -->
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">4. Generate Invoice</h2>
-                <button id="generate-invoice-btn" class="btn btn-primary w-full flex items-center justify-content-center gap-2">
-                    Generate Invoice
-                    <div id="generate-loading-spinner" class="loading-spinner hidden"></div>
-                </button>
-            </div>
-
-            <!-- Invoice Display Section -->
-            <div id="invoice-output" class="bg-white p-6 rounded-lg shadow-md border border-gray-200 hidden">
-                <div class="flex flex-col md:flex-row justify-between items-start mb-4">
-                    <div>
-                        <img id="invoice-company-logo" src="" alt="Company Logo" class="h-16 mb-2 object-contain" onerror="this.style.display='none'" style="display:none;">
-                        <h2 class="text-2xl font-bold text-gray-800" id="display-company-name"></h2>
-                    </div>
-                    <div class="text-right mt-4 md:mt-0">
-                        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Invoice</h2>
-                        <p class="text-sm text-gray-600"><strong>Client Name:</strong> <span id="display-client-name"></span></p>
-                        <p class="text-sm text-gray-600"><strong>Invoice Date:</strong> <span id="display-invoice-date"></span></p>
-                        <p class="text-sm text-gray-600"><strong>Due Date:</strong> <span id="display-due-date"></span></p>
-                    </div>
-                </div>
-
-                <table class="invoice-table w-full border-collapse mt-6">
-                    <thead>
-                        <tr>
-                            <th class="w-1/2">Description</th>
-                            <th class="w-1/6">Qty</th>
-                            <th class="w-1/6">Unit Price</th>
-                            <th class="w-1/6 text-right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="final-invoice-items-body">
-                        <!-- Invoice items will be injected here -->
-                    </tbody>
-                    <tfoot>
-                        <!-- New total rows -->
-                        <tr>
-                            <td colspan="3" class="text-right">Materials Subtotal:</td>
-                            <td class="text-right" id="invoice-materials-subtotal"></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" class="text-right">Labor Total:</td>
-                            <td class="text-right" id="invoice-labor-total"></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" class="text-right">Tax:</td>
-                            <td class="text-right" id="invoice-tax"></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" class="text-right font-bold text-lg">Grand Total:</td>
-                            <td class="text-right font-bold text-lg" id="invoice-grand-total"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <div class="flex flex-col md:flex-row gap-4 mt-6">
-                    <!-- Send Invoice Email Button -->
-                    <button class="btn btn-primary flex-1" id="sendEmailButton">
-                        Send Invoice to Customer Email
-                    </button>
-                    <!-- New Print Invoice Button -->
-                    <button class="btn btn-secondary flex-1 bg-green-500 hover:bg-green-600 text-white" id="printInvoiceButton">
-                        Print Invoice
-                    </button>
-                </div>
-            </div>
-
-            <!-- Message/Modal Box -->
-            <div id="message-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="close-modal-btn">&times;</span>
-                    <p id="modal-message" class="text-lg text-gray-800 text-center"></p>
-                </div>
-            </div>
-
-            <!-- NEW: API Key Input Modal -->
-            <div id="api-key-modal" class="modal">
-                <div class="modal-content">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Enter Google Gemini API Key</h3>
-                    <p class="text-gray-700 mb-3">To enable AI receipt data extraction, please enter your Google Gemini API Key.</p>
-                    <p class="text-gray-700 text-sm mb-4">This key will be saved locally in your browser (`localStorage`) to avoid re-entry for future sessions on this device. It will NOT be sent to any server other than Google's Gemini API.</p>
-                    <input type="text" id="gemini-api-key-input" placeholder="Paste your API Key here..." class="w-full p-2 border rounded-md">
-                    <button id="save-api-key-btn" class="btn btn-primary w-full mt-4">Save Key & Continue</button>
-                    <p class="warning mt-2">**Warning:** Do not share your API key publicly. For production, consider using a secure backend proxy.</p>
-                </div>
-            </div>
-
         </div>
 
-        <script>
-            let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
-            let companyLogoBase64 = null; // To store the base64 string of the company logo
-            let geminiApiKey = localStorage.getItem('geminiApiKey') || ''; // Load API key from localStorage
+        <!-- Receipt Upload Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Upload Receipt Photo(s)</h2>
+            <div class="input-group mb-4">
+                <label for="receipt-photo" class="text-gray-700">Select Receipt Image(s):</label>
+                <!-- Added 'multiple' attribute here -->
+                <input type="file" id="receipt-photo" accept="image/*" multiple class="w-full text-gray-700 p-2 border border-gray-300 rounded-md">
+            </div>
+            <button id="extract-data-btn" class="btn btn-primary w-full flex items-center justify-content-center gap-2">
+                Extract Data from Receipt(s)
+                <div id="extract-loading-spinner" class="loading-spinner hidden"></div>
+            </button>
+            <div id="extraction-status" class="mt-4 text-sm text-gray-600"></div>
+        </div>
 
-            // Get DOM elements
-            const companyNameInput = document.getElementById('company-name');
-            const companyLogoInput = document.getElementById('company-logo');
-            const logoPreviewContainer = document.getElementById('logo-preview-container');
+        <!-- Manual Item Entry Section -->
+        <div class="bg-purple-50 p-6 rounded-lg border border-purple-200">
+            <h2 class="text-2xl font-semibold text-purple-700 mb-4">2. Add/Edit Invoice Items</h2>
 
-            const receiptPhotoInput = document.getElementById('receipt-photo');
-            const extractDataBtn = document.getElementById('extract-data-btn');
-            const extractLoadingSpinner = document.getElementById('extract-loading-spinner');
-            const extractionStatusDiv = document.getElementById('extraction-status');
-
-            const manualDescriptionInput = document.getElementById('manual-description');
-            const manualQuantityInput = document.getElementById('manual-quantity');
-            const manualUnitPriceInput = document.getElementById('manual-unit-price');
-            const addManualItemBtn = document.getElementById('add-manual-item-btn');
-            const clearAllItemsBtn = document.getElementById('clear-all-items-btn'); // New clear button
-            const editableItemsBody = document.getElementById('editable-items-body');
-            const noItemsMessage = document.getElementById('no-items-message');
-
-
-            const clientNameInput = document.getElementById('client-name');
-            const clientEmailInput = document.getElementById('clientEmail'); 
-            const invoiceDateInput = document.getElementById('invoice-date');
-            const dueDateInput = document.getElementById('due-date');
-            const invoiceDetailsTextarea = document.getElementById('invoiceDetails'); 
-            const laborHoursInput = document.getElementById('labor-hours');
-            const hourlyRateInput = document.getElementById('hourly-rate'); 
-            const taxRateInput = document.getElementById('tax-rate'); // New: Tax Rate Input
-            const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
-            const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
-
-            const invoiceOutputDiv = document.getElementById('invoice-output');
-            const displayCompanyName = document.getElementById('display-company-name');
-            const invoiceCompanyLogo = document.getElementById('invoice-company-logo');
-            const displayClientName = document.getElementById('display-client-name');
-            const displayInvoiceDate = document.getElementById('display-invoice-date');
-            const displayDueDate = document.getElementById('display-due-date');
-            const finalInvoiceItemsBody = document.getElementById('final-invoice-items-body');
-            const invoiceMaterialsSubtotal = document.getElementById('invoice-materials-subtotal'); // New
-            const invoiceLaborTotal = document.getElementById('invoice-labor-total'); // New
-            const invoiceTax = document.getElementById('invoice-tax');
-            const invoiceGrandTotal = document.getElementById('invoice-grand-total');
-
-            const sendEmailButton = document.getElementById('sendEmailButton'); 
-            const printInvoiceButton = document.getElementById('printInvoiceButton'); // New: Print Invoice Button
-
-            const messageModal = document.getElementById('message-modal');
-            const modalMessage = document.getElementById('modal-message');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-
-            const apiKeyModal = document.getElementById('api-key-modal');
-            const geminiApiKeyInput = document.getElementById('gemini-api-key-input');
-            const saveApiKeyBtn = document.getElementById('save-api-key-btn');
-
-            const MAX_RETRIES = 3; // Define max retries for AI extraction
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
+                <div class="input-group md:col-span-2">
+                    <label for="manual-description" class="text-purple-700">Description:</label>
+                    <input type="text" id="manual-description" placeholder="Service fee, Product XYZ" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="manual-quantity" class="text-purple-700">Qty:</label>
+                    <input type="number" id="manual-quantity" value="1" min="0" step="1" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="manual-unit-price" class="text-purple-700">Unit Price ($):</label>
+                    <input type="number" id="manual-unit-price" value="0.00" min="0" step="0.01" class="mt-1">
+                </div>
+                <button id="add-manual-item-btn" class="btn btn-primary bg-purple-600 hover:bg-purple-700 mt-2 md:mt-0">Add Item Manually</button>
+            </div>
+            <!-- New: Clear All Items button -->
+            <button id="clear-all-items-btn" class="btn btn-secondary w-full mt-4 bg-red-400 hover:bg-red-500 text-white">Clear All Items</button>
 
 
-            // Set default dates and company name
-            window.onload = function() {
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-                const day = String(today.getDate()).padStart(2, '0');
-                invoiceDateInput.value = `${year}-${month}-${day}`;
+            <div id="invoice-items-management" class="mt-6 bg-white p-4 rounded-lg border border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Invoice Line Items:</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="w-1/2 text-left p-2">Description</th>
+                            <th class="w-1/6 text-left p-2">Qty</th>
+                            <th class="w-1/6 text-left p-2">Unit Price</th>
+                            <th class="w-1/6 text-left p-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="editable-items-body">
+                        <!-- Editable items will be injected here -->
+                        <tr><td colspan="4" class="text-center text-gray-500 p-4" id="no-items-message">No items added yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                // Set due date to 7 days from now
-                const dueDate = new Date();
-                dueDate.setDate(today.getDate() + 7);
-                const dueYear = dueDate.getFullYear();
-                const dueMonth = String(dueDate.getMonth() + 1).padStart(2, '0');
-                const dueDay = String(dueDate.getDate()).padStart(2, '0');
-                dueDateInput.value = `${dueYear}-${dueMonth}-${dueDay}`;
-                renderEditableItems(); // Initial render for empty state
-            };
 
-            // Function to show custom message modal
-            function showMessage(message) {
-                modalMessage.textContent = message;
-                messageModal.style.display = 'flex';
-                modalMessage.style.textAlign = 'center';
-            }
+        <!-- Invoice Details Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Invoice Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="client-name" class="text-gray-700">Client Name:</label>
+                    <input type="text" id="client-name" placeholder="John Doe Services" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="clientEmail" class="text-gray-700">Customer Email:</label>
+                    <input type="email" id="clientEmail" placeholder="customer@example.com" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="invoice-date" class="text-gray-700">Invoice Date:</label>
+                    <input type="date" id="invoice-date" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="due-date" class="text-gray-700">Due Date:</label>
+                    <input type="date" id="due-date" class="mt-1">
+                </div>
+            </div>
 
-            // Function to hide custom message modal
-            closeModalBtn.onclick = function() {
+            <div class="input-group mb-4">
+                <label for="invoiceDetails" class="text-gray-700">Additional Invoice Notes:</label>
+                <textarea id="invoiceDetails" placeholder="Add any specific notes or terms for this invoice here..." rows="4" class="mt-1"></textarea>
+            </div>
+
+
+            <h3 class="text-xl font-semibold text-gray-700 mb-3">Labor Cost</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="input-group">
+                    <label for="labor-hours" class="text-gray-700">Labor Hours:</label>
+                    <input type="number" id="labor-hours" value="0" min="0" step="0.5" class="mt-1">
+                </div>
+                <div class="input-group">
+                    <label for="hourly-rate" class="text-gray-700">Hourly Rate ($):</label>
+                    <input type="number" id="hourly-rate" value="30.00" min="0" step="0.01" class="mt-1">
+                </div>
+            </div>
+
+            <!-- New: Tax Rate Input -->
+            <div class="input-group mb-4">
+                <label for="tax-rate" class="text-gray-700">Tax Rate (%):</label>
+                <input type="number" id="tax-rate" value="0" min="0" step="0.01" class="mt-1">
+            </div>
+        </div>
+
+        <!-- Generate Invoice Section -->
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">4. Generate Invoice</h2>
+            <button id="generate-invoice-btn" class="btn btn-primary w-full flex items-center justify-content-center gap-2">
+                Generate Invoice
+                <div id="generate-loading-spinner" class="loading-spinner hidden"></div>
+            </button>
+        </div>
+
+        <!-- Invoice Display Section -->
+        <div id="invoice-output" class="bg-white p-6 rounded-lg shadow-md border border-gray-200 hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start mb-4">
+                <div>
+                    <img id="invoice-company-logo" src="" alt="Company Logo" class="h-16 mb-2 object-contain" onerror="this.style.display='none'" style="display:none;">
+                    <h2 class="text-2xl font-bold text-gray-800" id="display-company-name"></h2>
+                </div>
+                <div class="text-right mt-4 md:mt-0">
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Invoice</h2>
+                    <p class="text-sm text-gray-600"><strong>Client Name:</strong> <span id="display-client-name"></span></p>
+                    <p class="text-sm text-gray-600"><strong>Invoice Date:</strong> <span id="display-invoice-date"></span></p>
+                    <p class="text-sm text-gray-600"><strong>Due Date:</strong> <span id="display-due-date"></span></p>
+                </div>
+            </div>
+
+            <table class="invoice-table w-full border-collapse mt-6">
+                <thead>
+                    <tr>
+                        <th class="w-1/2">Description</th>
+                        <th class="w-1/6">Qty</th>
+                        <th class="w-1/6">Unit Price</th>
+                        <th class="w-1/6 text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="final-invoice-items-body">
+                    <!-- Invoice items will be injected here -->
+                </tbody>
+                <tfoot>
+                    <!-- New total rows -->
+                    <tr>
+                        <td colspan="3" class="text-right">Materials Subtotal:</td>
+                        <td class="text-right" id="invoice-materials-subtotal"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Labor Total:</td>
+                        <td class="text-right" id="invoice-labor-total"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right">Tax:</td>
+                        <td class="text-right" id="invoice-tax"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-right font-bold text-lg">Grand Total:</td>
+                        <td class="text-right font-bold text-lg" id="invoice-grand-total"></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="flex flex-col md:flex-row gap-4 mt-6">
+                <!-- Removed Send Invoice Email Button -->
+                <!-- New Save/Print Invoice Button -->
+                <button class="btn btn-primary flex-1 bg-green-500 hover:bg-green-600 text-white" id="savePrintInvoiceButton">
+                    Save/Print Invoice
+                </button>
+            </div>
+        </div>
+
+        <!-- Message/Modal Box -->
+        <div id="message-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button" id="close-modal-btn">&times;</span>
+                <p id="modal-message" class="text-lg text-gray-800 text-center"></p>
+            </div>
+        </div>
+
+        <!-- NEW: API Key Input Modal -->
+        <div id="api-key-modal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Enter Google Gemini API Key</h3>
+                <p class="text-gray-700 mb-3">To enable AI receipt data extraction, please enter your Google Gemini API Key.</p>
+                <p class="text-gray-700 text-sm mb-4">This key will be saved locally in your browser (`localStorage`) to avoid re-entry for future sessions on this device. It will NOT be sent to any server other than Google's Gemini API.</p>
+                <input type="text" id="gemini-api-key-input" placeholder="Paste your API Key here..." class="w-full p-2 border rounded-md">
+                <button id="save-api-key-btn" class="btn btn-primary w-full mt-4">Save Key & Continue</button>
+                <p class="warning mt-2">**Warning:** Do not share your API key publicly. For production, consider using a secure backend proxy.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let invoiceLineItems = []; // Unified array to store all invoice items (extracted + manual)
+        let companyLogoBase64 = null; // To store the base64 string of the company logo
+        let geminiApiKey = localStorage.getItem('geminiApiKey') || ''; // Load API key from localStorage
+
+        // Get DOM elements
+        const companyNameInput = document.getElementById('company-name');
+        const companyLogoInput = document.getElementById('company-logo');
+        const logoPreviewContainer = document.getElementById('logo-preview-container');
+
+        const receiptPhotoInput = document.getElementById('receipt-photo');
+        const extractDataBtn = document.getElementById('extract-data-btn');
+        const extractLoadingSpinner = document.getElementById('extract-loading-spinner');
+        const extractionStatusDiv = document.getElementById('extraction-status');
+
+        const manualDescriptionInput = document.getElementById('manual-description');
+        const manualQuantityInput = document.getElementById('manual-quantity');
+        const manualUnitPriceInput = document.getElementById('manual-unit-price');
+        const addManualItemBtn = document.getElementById('add-manual-item-btn');
+        const clearAllItemsBtn = document.getElementById('clear-all-items-btn'); // New clear button
+        const editableItemsBody = document.getElementById('editable-items-body');
+        const noItemsMessage = document.getElementById('no-items-message');
+
+
+        const clientNameInput = document.getElementById('client-name');
+        const clientEmailInput = document.getElementById('clientEmail');
+        const invoiceDateInput = document.getElementById('invoice-date');
+        const dueDateInput = document.getElementById('due-date');
+        const invoiceDetailsTextarea = document.getElementById('invoiceDetails');
+        const laborHoursInput = document.getElementById('labor-hours');
+        const hourlyRateInput = document.getElementById('hourly-rate');
+        const taxRateInput = document.getElementById('tax-rate'); // New: Tax Rate Input
+        const generateInvoiceBtn = document.getElementById('generate-invoice-btn');
+        const generateLoadingSpinner = document.getElementById('generate-loading-spinner');
+
+        const invoiceOutputDiv = document.getElementById('invoice-output');
+        const displayCompanyName = document.getElementById('display-company-name');
+        const invoiceCompanyLogo = document.getElementById('invoice-company-logo');
+        const displayClientName = document.getElementById('display-client-name');
+        const displayInvoiceDate = document.getElementById('display-invoice-date');
+        const displayDueDate = document.getElementById('display-due-date');
+        const finalInvoiceItemsBody = document.getElementById('final-invoice-items-body');
+        const invoiceMaterialsSubtotal = document.getElementById('invoice-materials-subtotal'); // New
+        const invoiceLaborTotal = document.getElementById('invoice-labor-total'); // New
+        const invoiceTax = document.getElementById('invoice-tax');
+        const invoiceGrandTotal = document.getElementById('invoice-grand-total');
+
+        // Changed from printInvoiceButton to savePrintInvoiceButton
+        const savePrintInvoiceButton = document.getElementById('savePrintInvoiceButton');
+
+        const messageModal = document.getElementById('message-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const geminiApiKeyInput = document.getElementById('gemini-api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+
+        const MAX_RETRIES = 3; // Define max retries for AI extraction
+
+
+        // Set default dates and company name
+        window.onload = function() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const day = String(today.getDate()).padStart(2, '0');
+            invoiceDateInput.value = `${year}-${month}-${day}`;
+
+            // Set due date to 7 days from now
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + 7);
+            const dueYear = dueDate.getFullYear();
+            const dueMonth = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dueDay = String(dueDate.getDate()).padStart(2, '0');
+            dueDateInput.value = `${dueYear}-${dueMonth}-${dueDay}`;
+            renderEditableItems(); // Initial render for empty state
+        };
+
+        // Function to show custom message modal
+        function showMessage(message) {
+            modalMessage.textContent = message;
+            messageModal.style.display = 'flex';
+            modalMessage.style.textAlign = 'center';
+        }
+
+        // Function to hide custom message modal
+        closeModalBtn.onclick = function() {
+            messageModal.style.display = 'none';
+        }
+
+        // Close general message modal if user clicks outside of it
+        window.onclick = function(event) {
+            if (event.target == messageModal) {
                 messageModal.style.display = 'none';
             }
+        }
 
-            // Close general message modal if user clicks outside of it
-            window.onclick = function(event) {
-                if (event.target == messageModal) {
-                    messageModal.style.display = 'none';
+        // Handle saving API Key from the new modal
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = geminiApiKeyInput.value.trim();
+            if (key) {
+                geminiApiKey = key;
+                localStorage.setItem('geminiApiKey', key); // Store for current session
+                apiKeyModal.style.display = 'none'; // Hide the modal
+                // After saving, if there are files already selected, try to process them
+                if (receiptPhotoInput.files.length > 0) {
+                    processSelectedReceipts(); // Call a new function to process multiple files
                 }
+            } else {
+                showMessage("Please enter a valid Gemini API Key.");
             }
+        });
 
-            // Handle saving API Key from the new modal
-            saveApiKeyBtn.addEventListener('click', () => {
-                const key = geminiApiKeyInput.value.trim();
-                if (key) {
-                    geminiApiKey = key;
-                    localStorage.setItem('geminiApiKey', key); // Store for current session
-                    apiKeyModal.style.display = 'none'; // Hide the modal
-                    // After saving, if there are files already selected, try to process them
-                    if (receiptPhotoInput.files.length > 0) {
-                        processSelectedReceipts(); // Call a new function to process multiple files
-                    }
-                } else {
-                    showMessage("Please enter a valid Gemini API Key.");
-                }
-            });
+        // Function to render the editable invoice items table
+        function renderEditableItems() {
+            editableItemsBody.innerHTML = ''; // Clear current list
+            if (invoiceLineItems.length === 0) {
+                noItemsMessage.style.display = 'table-row';
+            } else {
+                noItemsMessage.style.display = 'none';
+                invoiceLineItems.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'editable-item-row border-b border-gray-100';
+                    row.innerHTML = `
+                        <td><input type="text" value="${item.description || ''}" data-index="${index}" data-field="description" class="p-2 border rounded-md w-full"></td>
+                        <td><input type="number" value="${item.quantity || 1}" min="1" step="1" data-index="${index}" data-field="quantity" class="p-2 border rounded-md w-full"></td>
+                        <td><input type="number" value="${(item.unit_price || 0).toFixed(2)}" min="0" step="0.01" data-index="${index}" data-field="unit_price" class="p-2 border rounded-md w-full"></td>
+                        <td><button data-index="${index}" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md">Delete</button></td>
+                    `;
+                    editableItemsBody.appendChild(row);
+                });
 
-            // Function to render the editable invoice items table
-            function renderEditableItems() {
-                editableItemsBody.innerHTML = ''; // Clear current list
-                if (invoiceLineItems.length === 0) {
-                    noItemsMessage.style.display = 'table-row';
-                } else {
-                    noItemsMessage.style.display = 'none';
-                    invoiceLineItems.forEach((item, index) => {
-                        const row = document.createElement('tr');
-                        row.className = 'editable-item-row border-b border-gray-100';
-                        row.innerHTML = `
-                            <td><input type="text" value="${item.description || ''}" data-index="${index}" data-field="description" class="p-2 border rounded-md w-full"></td>
-                            <td><input type="number" value="${item.quantity || 1}" min="1" step="1" data-index="${index}" data-field="quantity" class="p-2 border rounded-md w-full"></td>
-                            <td><input type="number" value="${(item.unit_price || 0).toFixed(2)}" min="0" step="0.01" data-index="${index}" data-field="unit_price" class="p-2 border rounded-md w-full"></td>
-                            <td><button data-index="${index}" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md">Delete</button></td>
-                        `;
-                        editableItemsBody.appendChild(row);
-                    });
+                // Add event listeners for editing and deleting
+                editableItemsBody.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        const field = e.target.dataset.field;
+                        let value = e.target.value;
 
-                    // Add event listeners for editing and deleting
-                    editableItemsBody.querySelectorAll('input').forEach(input => {
-                        input.addEventListener('change', (e) => {
-                            const index = parseInt(e.target.dataset.index);
-                            const field = e.target.dataset.field;
-                            let value = e.target.value;
-
-                            if (field === 'quantity' || field === 'unit_price') {
-                                value = parseFloat(value) || 0;
-                                if (field === 'quantity' && value < 1) value = 1; 
-                                if (field === 'unit_price' && value < 0) value = 0; 
-                            }
-                            invoiceLineItems[index][field] = value;
-                            invoiceLineItems[index].total_price = (invoiceLineItems[index].quantity || 0) * (invoiceLineItems[index].unit_price || 0);
-                        });
-                    });
-
-                    editableItemsBody.querySelectorAll('button').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            const index = parseInt(e.target.dataset.index);
-                            invoiceLineItems.splice(index, 1); 
-                            renderEditableItems(); 
-                        });
-                    });
-                }
-            }
-
-            // Event listener for "Clear All Items" button
-            clearAllItemsBtn.addEventListener('click', () => {
-                if (confirm("Are you sure you want to clear all invoice items? This cannot be undone.")) {
-                    invoiceLineItems = []; // Empty the array
-                    renderEditableItems(); // Re-render to show empty state
-                    extractionStatusDiv.textContent = 'All items cleared.';
-                    extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
-                    extractionStatusDiv.classList.add('text-gray-600');
-                }
-            });
-
-
-            // Event listener for company logo input
-            companyLogoInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        companyLogoBase64 = e.target.result; 
-                        const img = document.createElement('img');
-                        img.src = companyLogoBase64;
-                        img.alt = "Company Logo Preview";
-                        img.className = "h-12 object-contain rounded"; 
-                        logoPreviewContainer.innerHTML = ''; 
-                        logoPreviewContainer.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    companyLogoBase64 = null;
-                    logoPreviewContainer.innerHTML = '';
-                }
-            });
-
-            // Event listener for manual item addition
-            addManualItemBtn.addEventListener('click', () => {
-                const description = manualDescriptionInput.value.trim();
-                const quantity = parseFloat(manualQuantityInput.value) || 1;
-                const unitPrice = parseFloat(manualUnitPriceInput.value) || 0;
-
-                if (!description || quantity <= 0 || unitPrice < 0) {
-                    showMessage("Please enter a valid description, quantity (must be > 0), and unit price for manual item.");
-                    return;
-                }
-
-                const newItem = {
-                    description: description,
-                    quantity: quantity,
-                    unit_price: unitPrice,
-                    total_price: quantity * unitPrice 
-                };
-
-                invoiceLineItems.push(newItem);
-                renderEditableItems(); 
-                manualDescriptionInput.value = '';
-                manualQuantityInput.value = '1';
-                manualUnitPriceInput.value = '0.00';
-            });
-
-            // Function to process a single receipt file with AI (now includes retry logic)
-            async function processSingleReceipt(file, attempt = 1) {
-                console.log(`[${file.name}] Starting processing (Attempt ${attempt}/${MAX_RETRIES})...`);
-
-                return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = async () => {
-                        const base64ImageData = reader.result.split(',')[1];
-                        console.log(`[${file.name}] Base64 image data length: ${base64ImageData.length}`);
-
-                        try {
-                            const prompt = `Analyze the provided receipt image. Your primary goal is to extract itemized lists (description, quantity, unit price, and total price for each item), along with the overall subtotal, tax, and grand total.
-                            * **Be resilient to image quality:** Even if parts are blurry or incomplete, attempt to infer the most probable values.
-                            * **Prioritize numerical accuracy:** All price, quantity, and total fields MUST be valid numbers (floats). If a numerical value cannot be confidently extracted or inferred, use 0.
-                            * **Handle missing data:** If a description, quantity, or unit price for an item is missing, use "N/A" for strings, or 0 for numbers, but still include the item if its existence is clear.
-                            * **Strict JSON Format:** Your response MUST be a JSON object conforming to this schema, even if some values are null/0 or the 'items' array is empty. ENCLOSE THE ENTIRE JSON OUTPUT WITHIN A MARKDOWN CODE BLOCK (e.g., \`\`\`json { ... } \`\`\`):
-                                {
-                                "items": [
-                                    {"description": "string", "quantity": number, "unit_price": number, "total_price": number}
-                                ],
-                                "subtotal": number,
-                                "tax": number,
-                                "grand_total": number
-                                }`;
-
-                            let chatHistory = [];
-                            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                            const payload = {
-                                contents: [
-                                    {
-                                        role: "user",
-                                        parts: [
-                                            { text: prompt },
-                                            {
-                                                inlineData: {
-                                                    mimeType: file.type,
-                                                    data: base64ImageData
-                                                }
-                                            }
-                                        ] 
-                                    }
-                                ], 
-                                generationConfig: {
-                                    responseMimeType: "application/json",
-                                    responseSchema: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            "items": {
-                                                "type": "ARRAY",
-                                                "items": {
-                                                    "type": "OBJECT",
-                                                    "properties": {
-                                                        "description": { "type": "STRING" },
-                                                        "quantity": { "type": "NUMBER" },
-                                                        "unit_price": { "type": "NUMBER" },
-                                                        "total_price": { "type": "NUMBER" }
-                                                    }
-                                                }
-                                            },
-                                            "subtotal": { "type": "NUMBER" },
-                                            "tax": { "type": "NUMBER" },
-                                            "grand_total": { "type": "NUMBER" }
-                                        }
-                                    }
-                                }
-                            };
-
-                            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`; 
-
-                            console.log(`[${file.name}] Sending API request (Attempt ${attempt}) with key length: ${geminiApiKey.length}, key starts with: ${geminiApiKey.substring(0, 5)}...`);
-
-                            // Add a timeout for the fetch request
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
-
-                            const response = await fetch(apiUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                                signal: controller.signal // Apply the abort signal
-                            });
-
-                            clearTimeout(timeoutId); // Clear the timeout if fetch completes in time
-
-                            if (!response.ok) {
-                                const errorData = await response.json().catch(() => ({ message: 'Unknown error or non-JSON response from API.' }));
-                                let errorMessage = `API Error for ${file.name} (Status: ${response.status}): ${errorData.message || response.statusText}.`;
-                                if (response.status === 401 || response.status === 403) {
-                                    errorMessage += " Please check your Gemini API key's validity and permissions.";
-                                }
-                                console.error(`[${file.name}] API Error Response (Attempt ${attempt}):`, errorData); 
-                                resolve({ success: false, error: errorMessage, file: file.name });
-                                return; 
-                            }
-
-                            const result = await response.json();
-                            console.log(`[${file.name}] Gemini API raw result (Attempt ${attempt}):`, result);
-
-                            if (result.candidates && result.candidates.length > 0 &&
-                                result.candidates[0].content && result.candidates[0].content.parts &&
-                                result.candidates[0].content.parts.length > 0) {
-                                const rawJsonText = result.candidates[0].content.parts[0].text;
-                                console.log(`[${file.name}] Gemini API extracted raw text (Attempt ${attempt}):`, rawJsonText);
-
-                                let jsonString;
-                                const jsonMatch = rawJsonText.match(/```json\s*([\s\S]*?)\s*```/); 
-                                if (jsonMatch && jsonMatch[1]) {
-                                    jsonString = jsonMatch[1].trim(); 
-                                    console.log(`[${file.name}] Extracted JSON from markdown block (Attempt ${attempt}):`, jsonString);
-                                } else {
-                                    jsonString = rawJsonText.trim(); 
-                                    console.log(`[${file.name}] No markdown block found, attempting to parse raw text as JSON (Attempt ${attempt}):`, jsonString);
-                                }
-                                
-                                try {
-                                    const parsedData = JSON.parse(jsonString);
-                                    console.log(`[${file.name}] Successfully parsed JSON data (Attempt ${attempt}):`, parsedData);
-                                    resolve({ success: true, items: parsedData.items || [], file: file.name });
-                                } catch (parseError) {
-                                    if (attempt < MAX_RETRIES) {
-                                        console.warn(`[${file.name}] JSON Parse Error (Attempt ${attempt}). Retrying...`, parseError);
-                                        // Retry the function call
-                                        setTimeout(() => { // Add a small delay before retrying
-                                            processSingleReceipt(file, attempt + 1).then(resolve);
-                                        }, 1000 * attempt); // 1s, 2s, 3s delay for retries
-                                    } else {
-                                        const jsonParseErrorMessage = `JSON Parse Error for ${file.name} (All ${MAX_RETRIES} attempts failed): ${parseError.message}. Content was not valid JSON. Raw text received: "${jsonString}"`;
-                                        console.error(`[${file.name}] ${jsonParseErrorMessage}`, parseError);
-                                        resolve({ success: false, error: jsonParseErrorMessage, file: file.name });
-                                    }
-                                }
-
-                            } else {
-                                let errorMessage = `Could not extract data from ${file.name}. AI response was empty or malformed (no candidates/content).`;
-                                if (result.error && result.error.message) {
-                                    errorMessage += ` Error: ${result.error.message}`;
-                                }
-                                console.error(`[${file.name}] Gemini API response not OK or data missing (Attempt ${attempt}):`, result);
-                                resolve({ success: false, error: errorMessage, file: file.name });
-                            }
-                        } catch (error) {
-                            if (error.name === 'AbortError') {
-                                const timeoutErrorMessage = `Processing for ${file.name} timed out after 60 seconds.`;
-                                if (attempt < MAX_RETRIES) {
-                                    console.warn(`[${file.name}] ${timeoutErrorMessage} (Attempt ${attempt}). Retrying...`);
-                                    setTimeout(() => { // Add a small delay before retrying
-                                        processSingleReceipt(file, attempt + 1).then(resolve);
-                                    }, 1000 * attempt); // 1s, 2s, 3s delay for retries
-                                } else {
-                                    const finalTimeoutMessage = `${timeoutErrorMessage} (All ${MAX_RETRIES} attempts failed). Please try again or with a smaller image.`;
-                                    console.error(`[${file.name}] ${finalTimeoutMessage}`);
-                                    resolve({ success: false, error: finalTimeoutMessage, file: file.name });
-                                }
-                            } else {
-                                console.error(`[${file.name}] Error during data extraction (overall catch block, Attempt ${attempt}):`, error);
-                                resolve({ success: false, error: error.message, file: file.name });
-                            }
+                        if (field === 'quantity' || field === 'unit_price') {
+                            value = parseFloat(value) || 0;
+                            if (field === 'quantity' && value < 1) value = 1;
+                            if (field === 'unit_price' && value < 0) value = 0;
                         }
-                    };
-                    reader.onerror = (errorEvent) => {
-                        const fileReadErrorMessage = `File reading error for ${file.name}: ${reader.error ? reader.error.message : 'Unknown error'}`;
-                        console.error(`[${file.name}] ${fileReadErrorMessage}`, errorEvent);
-                        resolve({ success: false, error: fileReadErrorMessage, file: file.name });
-                    };
-                    reader.readAsDataURL(file);
+                        invoiceLineItems[index][field] = value;
+                        invoiceLineItems[index].total_price = (invoiceLineItems[index].quantity || 0) * (invoiceLineItems[index].unit_price || 0);
+                    });
+                });
+
+                editableItemsBody.querySelectorAll('button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        invoiceLineItems.splice(index, 1);
+                        renderEditableItems();
+                    });
                 });
             }
+        }
 
-            // New function to handle processing multiple selected receipts
-            async function processSelectedReceipts() {
-                const files = receiptPhotoInput.files;
-                if (files.length === 0) {
-                    showMessage("No receipt photos selected for extraction.");
-                    extractDataBtn.disabled = false;
-                    extractLoadingSpinner.classList.add('hidden');
-                    return;
-                }
+        // Event listener for "Clear All Items" button
+        clearAllItemsBtn.addEventListener('click', () => {
+            // Replaced confirm() with showMessage() for custom modal behavior
+            showMessage("Are you sure you want to clear all invoice items? This cannot be undone.");
+            // Add a confirmation button to the modal if needed for actual confirmation
+            // For now, this just shows a message. You might want to add a "Yes/No" button to the modal.
+            // Example:
+            // modalMessage.innerHTML = 'Are you sure you want to clear all invoice items? This cannot be undone.<br><button id="confirmClear" class="btn btn-primary mt-4">Yes, Clear</button><button id="cancelClear" class="btn btn-secondary ml-2 mt-4">Cancel</button>';
+            // document.getElementById('confirmClear').onclick = () => {
+            //     invoiceLineItems = [];
+            //     renderEditableItems();
+            //     extractionStatusDiv.textContent = 'All items cleared.';
+            //     extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
+            //     extractionStatusDiv.classList.add('text-gray-600');
+            //     messageModal.style.display = 'none';
+            // };
+            // document.getElementById('cancelClear').onclick = () => {
+            //     messageModal.style.display = 'none';
+            // };
 
-                if (!geminiApiKey) {
-                    apiKeyModal.style.display = 'flex';
-                    geminiApiKeyInput.focus();
-                    extractDataBtn.disabled = false;
-                    extractLoadingSpinner.classList.add('hidden');
-                    extractionStatusDiv.textContent = 'Enter API Key to proceed.';
-                    extractionStatusDiv.classList.remove('text-green-600');
-                    extractionStatusDiv.classList.add('text-red-600');
-                    return;
-                }
+            // For now, directly clear if you want to bypass a second confirmation click
+            invoiceLineItems = []; // Empty the array
+            renderEditableItems(); // Re-render to show empty state
+            extractionStatusDiv.textContent = 'All items cleared.';
+            extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
+            extractionStatusDiv.classList.add('text-gray-600');
+            messageModal.style.display = 'none'; // Hide modal after action, if not using confirm buttons
+        });
 
-                extractDataBtn.disabled = true;
-                extractLoadingSpinner.classList.remove('hidden');
-                extractionStatusDiv.textContent = `Processing ${files.length} receipt(s)...`;
-                extractionStatusDiv.classList.remove('text-red-600', 'text-green-600');
-                extractionStatusDiv.classList.add('text-gray-600');
 
-                let successfulExtractions = 0;
-                let errorMessages = [];
+        // Event listener for company logo input
+        companyLogoInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    companyLogoBase64 = e.target.result;
+                    const img = document.createElement('img');
+                    img.src = companyLogoBase64;
+                    img.className = 'h-16 object-contain';
+                    logoPreviewContainer.innerHTML = ''; // Clear previous preview
+                    logoPreviewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                companyLogoBase64 = null;
+                logoPreviewContainer.innerHTML = '';
+            }
+        });
 
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    extractionStatusDiv.textContent = `Processing ${file.name} (${i + 1}/${files.length})...`;
-                    const result = await processSingleReceipt(file); // Start first attempt
-                    if (result.success) {
-                        invoiceLineItems.push(...result.items);
-                        successfulExtractions++;
-                    } else {
-                        errorMessages.push(result.error);
-                    }
-                }
+        // Function to convert image file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]); // Get base64 string without prefix
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
 
-                // After all files are processed
-                if (successfulExtractions > 0) {
-                    extractionStatusDiv.textContent = `Successfully extracted items from ${successfulExtractions} of ${files.length} receipt(s). Review and edit below.`;
-                    extractionStatusDiv.classList.add('text-green-600');
-                    extractionStatusDiv.classList.remove('text-red-600');
-                } else {
-                    extractionStatusDiv.textContent = `No items extracted from any of the ${files.length} receipt(s). Please try clearer photos or add items manually.`;
-                    extractionStatusDiv.classList.add('text-red-600');
-                    extractionStatusDiv.classList.remove('text-green-600');
-                }
-
-                // Show a summarized error message if any errors occurred
-                if (errorMessages.length > 0) {
-                    const combinedErrorMessage = "Errors occurred during extraction:\n" + errorMessages.join('\n');
-                    showMessage(combinedErrorMessage);
-                }
-
-                renderEditableItems(); 
-                extractDataBtn.disabled = false;
-                extractLoadingSpinner.classList.add('hidden');
+        // Function to send image to Gemini AI for extraction
+        async function extractDataWithGemini(base64Image, retryCount = 0) {
+            if (!geminiApiKey) {
+                apiKeyModal.style.display = 'flex'; // Show API key modal
+                throw new Error("Gemini API Key is not set. Please enter your API key to proceed with AI extraction.");
             }
 
+            const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${geminiApiKey}`;
 
-            // Event listener for receipt photo upload and data extraction
-            extractDataBtn.addEventListener('click', () => {
-                console.log('Extract Data button clicked.');
-                processSelectedReceipts(); // Call the new multi-file processing function
+            const prompt = `Extract the following information from this receipt image in a JSON array format.
+            Each item in the array should have 'description' (string), 'quantity' (number), and 'unit_price' (number).
+            If no specific quantity is listed but a unit price is, assume quantity is 1.
+            If the receipt includes taxes, do not include the tax amount in the line items; it will be calculated separately.
+            Only include individual line items, not subtotals or grand totals.
+            Example for one item: {"description": "Organic Strawberries", "quantity": 2, "unit_price": 4.99}
+
+            If no items are found, return an empty array: [].`;
+
+            const requestBody = {
+                contents: [
+                    {
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: "image/jpeg", // Assuming JPEG for receipt photos
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 429 && retryCount < MAX_RETRIES) {
+                        const delay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000; // Exponential back-off
+                        extractionStatusDiv.textContent = `Rate limit exceeded. Retrying in ${delay / 1000} seconds...`;
+                        await new Promise(res => setTimeout(res, delay));
+                        return extractDataWithGemini(base64Image, retryCount + 1);
+                    }
+                    if (response.status === 400 && errorData.error && errorData.error.message.includes("API key not valid")) {
+                         throw new Error("Invalid API Key. Please check your Google Gemini API key and try again.");
+                    }
+                    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+                console.log("Gemini API Response:", data);
+
+                const textResponse = data.candidates[0]?.content?.parts[0]?.text;
+                if (!textResponse) {
+                    throw new Error("No text content found in Gemini response.");
+                }
+
+                // Attempt to parse the JSON string from the response
+                let extractedItems = [];
+                try {
+                    // Gemini might return markdown, so we need to clean it up
+                    const jsonString = textResponse.replace(/```json\n|```/g, '').trim();
+                    extractedItems = JSON.parse(jsonString);
+                } catch (parseError) {
+                    console.error("Failed to parse JSON from AI response, attempting regex extraction:", parseError);
+                    // Fallback to regex if direct JSON parsing fails
+                    const itemRegex = /"description":\s*"([^"]*)",\s*"quantity":\s*(\d+),\s*"unit_price":\s*([\d.]+)/g;
+                    let match;
+                    while ((match = itemRegex.exec(textResponse)) !== null) {
+                        extractedItems.push({
+                            description: match[1],
+                            quantity: parseInt(match[2]),
+                            unit_price: parseFloat(match[3])
+                        });
+                    }
+                    if (extractedItems.length === 0) {
+                         throw new Error("Could not parse invoice items from AI response. Please try again with a clearer image or add items manually.");
+                    }
+                }
+                return extractedItems;
+
+            } catch (error) {
+                console.error("Error during Gemini API call:", error);
+                extractionStatusDiv.textContent = `Extraction failed: ${error.message}`;
+                extractionStatusDiv.classList.add('text-red-600');
+                extractLoadingSpinner.classList.add('hidden');
+                throw error; // Re-throw to be caught by the calling function
+            }
+        }
+
+        // Function to process multiple selected receipts
+        async function processSelectedReceipts() {
+            const files = receiptPhotoInput.files;
+            if (files.length === 0) {
+                showMessage("Please select at least one receipt image to extract data.");
+                return;
+            }
+
+            extractDataBtn.disabled = true;
+            extractLoadingSpinner.classList.remove('hidden');
+            extractionStatusDiv.textContent = `Processing ${files.length} receipt(s)...`;
+            extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
+            extractionStatusDiv.classList.add('text-gray-600');
+
+            let allExtractedItems = [];
+            let successfulExtractions = 0;
+            let failedExtractions = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                extractionStatusDiv.textContent = `Processing receipt ${i + 1} of ${files.length}: ${file.name}...`;
+                try {
+                    const base64Image = await fileToBase64(file);
+                    const items = await extractDataWithGemini(base64Image);
+                    allExtractedItems = allExtractedItems.concat(items);
+                    successfulExtractions++;
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                    failedExtractions++;
+                    if (error.message.includes("API key not valid")) {
+                        // If API key is invalid, stop processing and show modal
+                        extractionStatusDiv.textContent = "Extraction stopped: Invalid API Key. Please update your key.";
+                        extractLoadingSpinner.classList.add('hidden');
+                        extractDataBtn.disabled = false;
+                        apiKeyModal.style.display = 'flex';
+                        return;
+                    }
+                }
+            }
+
+            extractLoadingSpinner.classList.add('hidden');
+            extractDataBtn.disabled = false;
+
+            if (allExtractedItems.length > 0) {
+                invoiceLineItems = invoiceLineItems.concat(allExtractedItems);
+                renderEditableItems();
+                extractionStatusDiv.textContent = `Successfully extracted ${allExtractedItems.length} items from ${successfulExtractions} receipt(s). Failed to extract from ${failedExtractions} receipt(s).`;
+                extractionStatusDiv.classList.remove('text-red-600', 'text-gray-600');
+                extractionStatusDiv.classList.add('text-green-600');
+            } else if (successfulExtractions > 0) {
+                extractionStatusDiv.textContent = `No line items detected in the uploaded receipt(s). Please add them manually if needed.`;
+                extractionStatusDiv.classList.remove('text-green-600', 'text-red-600');
+                extractionStatusDiv.classList.add('text-gray-600');
+            }
+            else {
+                extractionStatusDiv.textContent = `Failed to extract data from all receipts. Please check the image quality or try again.`;
+                extractionStatusDiv.classList.remove('text-green-600', 'text-gray-600');
+                extractionStatusDiv.classList.add('text-red-600');
+            }
+        }
+
+        extractDataBtn.addEventListener('click', () => {
+             // First check for API key
+            if (!geminiApiKey) {
+                apiKeyModal.style.display = 'flex'; // Show API key modal if not present
+                geminiApiKeyInput.value = ''; // Clear previous input
+                return; // Stop the process until key is entered
+            }
+            processSelectedReceipts();
+        });
+
+
+        // Add manual item
+        addManualItemBtn.addEventListener('click', () => {
+            const description = manualDescriptionInput.value.trim();
+            const quantity = parseInt(manualQuantityInput.value);
+            const unitPrice = parseFloat(manualUnitPriceInput.value);
+
+            if (!description) {
+                showMessage("Please enter a description for the manual item.");
+                return;
+            }
+            if (isNaN(quantity) || quantity <= 0) {
+                showMessage("Please enter a valid quantity (must be a positive number).");
+                return;
+            }
+            if (isNaN(unitPrice) || unitPrice < 0) {
+                showMessage("Please enter a valid unit price (can be 0 or more).");
+                return;
+            }
+
+            invoiceLineItems.push({
+                description: description,
+                quantity: quantity,
+                unit_price: unitPrice,
+                total_price: quantity * unitPrice
             });
 
+            manualDescriptionInput.value = '';
+            manualQuantityInput.value = '1';
+            manualUnitPriceInput.value = '0.00';
+            renderEditableItems();
+        });
 
-            // Event listener for invoice generation
-            generateInvoiceBtn.addEventListener('click', () => {
-                generateInvoiceBtn.disabled = true;
-                generateLoadingSpinner.classList.remove('hidden');
-                invoiceOutputDiv.classList.add('hidden'); // Hide previous invoice
+        // Generate Invoice
+        generateInvoiceBtn.addEventListener('click', () => {
+            generateLoadingSpinner.classList.remove('hidden');
+            generateInvoiceBtn.disabled = true;
 
-                const companyName = companyNameInput.value.trim();
-                const clientName = clientNameInput.value.trim();
-                const invoiceDate = invoiceDateInput.value;
-                const dueDate = dueDateInput.value;
-                const laborHours = parseFloat(laborHoursInput.value) || 0;
-                const hourlyRate = parseFloat(hourlyRateInput.value) || 0;
-                const taxRate = parseFloat(taxRateInput.value) || 0; // Get tax rate
+            const companyName = companyNameInput.value.trim();
+            const clientName = clientNameInput.value.trim();
+            const invoiceDate = invoiceDateInput.value;
+            const dueDate = dueDateInput.value;
+            const laborHours = parseFloat(laborHoursInput.value) || 0;
+            const hourlyRate = parseFloat(hourlyRateInput.value) || 0;
+            const taxRate = parseFloat(taxRateInput.value) || 0;
+            const invoiceNotes = invoiceDetailsTextarea.value.trim();
 
-                if (!companyName || !clientName || !invoiceDate || !dueDate) {
-                    showMessage("Please fill in all required invoice details (Company Name, Client Name, Invoice Date, Due Date).");
-                    generateInvoiceBtn.disabled = false;
-                    generateLoadingSpinner.classList.add('hidden');
-                    return;
-                }
 
-                if (invoiceLineItems.length === 0 && (laborHours * hourlyRate) === 0) {
-                     showMessage("Please add at least one item (manual or extracted) or provide labor hours to generate an invoice.");
-                     generateInvoiceBtn.disabled = false;
-                     generateLoadingSpinner.classList.add('hidden');
-                     return;
-                }
+            if (!companyName || !clientName || !invoiceDate || !dueDate) {
+                showMessage("Please fill in all required Invoice Details: Company Name, Client Name, Invoice Date, and Due Date.");
+                generateLoadingSpinner.classList.add('hidden');
+                generateInvoiceBtn.disabled = false;
+                return;
+            }
 
-                // Calculate labor total
-                const laborTotal = laborHours * hourlyRate;
+            displayCompanyName.textContent = companyName;
+            displayClientName.textContent = clientName;
+            displayInvoiceDate.textContent = invoiceDate;
+            displayDueDate.textContent = dueDate;
 
-                // Clear previous items in the final invoice display
-                finalInvoiceItemsBody.innerHTML = '';
+            if (companyLogoBase64) {
+                invoiceCompanyLogo.src = companyLogoBase64;
+                invoiceCompanyLogo.style.display = 'block';
+            } else {
+                invoiceCompanyLogo.style.display = 'none';
+            }
 
-                let materialsSubtotal = 0; 
+            finalInvoiceItemsBody.innerHTML = '';
+            let materialsSubtotal = 0;
 
-                // Add all items from invoiceLineItems to the final invoice
-                if (invoiceLineItems.length > 0) {
-                    invoiceLineItems.forEach(item => {
-                        const quantity = item.quantity || 1;
-                        const unitPrice = item.unit_price || 0;
-                        const itemTotalPrice = quantity * unitPrice;
-
-                        materialsSubtotal += itemTotalPrice;
-
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${item.description || 'N/A'}</td>
-                            <td>${quantity}</td>
-                            <td>$${unitPrice.toFixed(2)}</td>
-                            <td class="text-right">$${itemTotalPrice.toFixed(2)}</td>
-                        `;
-                        finalInvoiceItemsBody.appendChild(row);
-                    });
-                }
-                
-                // Calculate materials tax
-                const materialsTax = materialsSubtotal * (taxRate / 100);
-
-                // Add a visual separator if both materials and labor exist
-                if (materialsSubtotal > 0 && laborTotal > 0) {
-                    const separatorRow = document.createElement('tr');
-                    separatorRow.innerHTML = `<td colspan="4" class="py-2 bg-gray-50 text-gray-700 text-center text-sm">--- End of Material Items ---</td>`;
-                    finalInvoiceItemsBody.appendChild(separatorRow);
-                }
-
-                // Add labor cost as an item if applicable
-                if (laborTotal > 0) {
-                    const laborRow = document.createElement('tr');
-                    laborRow.innerHTML = `
-                        <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
-                        <td>1</td>
-                        <td>$${laborTotal.toFixed(2)}</td>
-                        <td class="text-right">$${laborTotal.toFixed(2)}</td>
-                    `;
-                    finalInvoiceItemsBody.appendChild(laborRow);
-                } else if (invoiceLineItems.length === 0 && laborTotal === 0 && materialsTax === 0) { // Condition updated to include tax even if no materials/labor
-                     // If no items extracted and no labor, show a message in the invoice itself
+            if (invoiceLineItems.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4" class="text-center text-gray-500 p-4">No items on this invoice.</td>`;
+                finalInvoiceItemsBody.appendChild(row);
+            } else {
+                invoiceLineItems.forEach(item => {
                     const row = document.createElement('tr');
+                    const itemTotal = (item.quantity * item.unit_price) || 0;
+                    materialsSubtotal += itemTotal;
                     row.innerHTML = `
-                        <td colspan="4" class="text-center text-gray-500">No items to display on invoice.</td>
+                        <td>${item.description}</td>
+                        <td>${item.quantity}</td>
+                        <td>$${item.unit_price.toFixed(2)}</td>
+                        <td class="text-right">$${itemTotal.toFixed(2)}</td>
                     `;
                     finalInvoiceItemsBody.appendChild(row);
-                }
-
-
-                const grandTotal = materialsSubtotal + materialsTax + laborTotal; // Sum materials, tax, and labor for grand total
-
-                // Populate invoice display with company name and logo
-                displayCompanyName.textContent = companyName;
-                if (companyLogoBase64) {
-                    invoiceCompanyLogo.src = companyLogoBase64;
-                    invoiceCompanyLogo.style.display = 'block';
-                } else {
-                    invoiceCompanyLogo.style.display = 'none'; // Hide if no logo
-                }
-                displayClientName.textContent = clientName;
-                displayInvoiceDate.textContent = invoiceDate;
-                displayDueDate.textContent = dueDate;
-                invoiceMaterialsSubtotal.textContent = `$${materialsSubtotal.toFixed(2)}`; 
-                invoiceLaborTotal.textContent = `$${laborTotal.toFixed(2)}`; 
-                invoiceTax.textContent = `$${materialsTax.toFixed(2)}`; // Display calculated tax
-                invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
-
-                invoiceOutputDiv.classList.remove('hidden');
-
-                generateInvoiceBtn.disabled = false;
-                generateLoadingSpinner.classList.add('hidden');
-            });
-
-            // The user-provided sendInvoiceEmail function, modified to use showMessage
-            async function sendInvoiceEmail(toEmail, subject, bodyContent) {
-                try {
-                    console.log('Attempting to send email...');
-                    console.log('To:', toEmail);
-                    console.log('Subject:', subject);
-                    // console.log('Body (HTML):', bodyContent); // Log the full body for debugging if needed
-
-                    // !!! IMPORTANT: Replace 'YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE' with the actual URL you got from gcloud deployment !!!
-                    const googleCloudFunctionUrl = 'YOUR_GOOGLE_CLOUD_FUNCTION_URL_HERE'; 
-
-                    const response = await fetch(googleCloudFunctionUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            to: toEmail,
-                            subject: subject,
-                            body: bodyContent // Sending HTML content here
-                        }),
-                    });
-
-                    console.log('Response status from Google Cloud Function:', response.status);
-                    const data = await response.json();
-                    console.log('Response data from Google Cloud Function:', data);
-
-                    if (response.ok) {
-                        showMessage(data.message || 'Email sent successfully!');
-                        console.log('Email send success:', data.message);
-                    } else {
-                        showMessage(`Failed to send email: ${data.message || response.statusText}. Please check Google Cloud Function logs.`);
-                        console.error('Email send failed (frontend received error from backend):', data.message || response.statusText);
-                    }
-                } catch (error) {
-                    console.error('Email send failed (frontend fetch error):', error);
-                    showMessage('Failed to send email. A network error or unhandled problem occurred. Check browser console.');
-                }
+                });
             }
 
-            // --- Event Listener for Send Email Button (Replaced onclick) ---
-            sendEmailButton.addEventListener('click', () => {
-                const companyName = document.getElementById('company-name').value.trim();
-                const clientName = document.getElementById('client-name').value.trim();
-                const clientEmail = document.getElementById('clientEmail').value.trim();
-                const invoiceDate = document.getElementById('invoice-date').value;
-                const dueDate = document.getElementById('due-date').value;
-                
-                // Retrieve calculated values directly from the display elements
-                const grandTotal = document.getElementById('invoice-grand-total').textContent;
-                const materialsSubtotal = document.getElementById('invoice-materials-subtotal').textContent;
-                const laborTotal = document.getElementById('invoice-labor-total').textContent;
-                const invoiceTaxValue = document.getElementById('invoice-tax').textContent; // Get the displayed tax value
+            const laborTotal = laborHours * hourlyRate;
+            const subtotalBeforeTax = materialsSubtotal + laborTotal;
+            const taxAmount = subtotalBeforeTax * (taxRate / 100);
+            const grandTotal = subtotalBeforeTax + taxAmount;
 
-                const additionalNotes = document.getElementById('invoiceDetails').value.trim();
+            invoiceMaterialsSubtotal.textContent = `$${materialsSubtotal.toFixed(2)}`;
+            invoiceLaborTotal.textContent = `$${laborTotal.toFixed(2)}`;
+            invoiceTax.textContent = `$${taxAmount.toFixed(2)} (${taxRate.toFixed(2)}%)`;
+            invoiceGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
 
-                if (!clientEmail) { showMessage('Please enter the customer\'s email address.'); return; }
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(clientEmail)) { showMessage('Please enter a valid email address for the customer.'); return; }
-                if (!companyName || !clientName || !invoiceDate || !grandTotal) { showMessage('Please generate the invoice first and ensure all details are filled.'); return; }
+            invoiceOutputDiv.classList.remove('hidden');
+            generateLoadingSpinner.classList.add('hidden');
+            generateInvoiceBtn.disabled = false;
 
-                const subject = `${companyName} - Invoice for ${clientName} on ${invoiceDate}`;
-                let htmlBody = `
-                    <html>
-                    <head>
-                        <style>
-                            body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-                            h1, h2 { color: #6366f1; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                            th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
-                            th { background-color: #f9fafb; font-weight: 600; }
-                            .total-row td { font-weight: bold; }
-                            .text-right { text-align: right; }
-                        </style>
-                    </head>
-                    <body>
-                        <h1 style='text-align: center;'>Invoice from ${companyName}</h1>
-                        <p><strong>Client Name:</strong> ${clientName}</p>
-                        <p><strong>Invoice Date:</strong> ${invoiceDate}</p>
-                        <p><strong>Due Date:</strong> ${dueDate}</p>
-                        ${additionalNotes ? `<p><strong>Additional Notes:</strong></p><p>${additionalNotes.replace(/\\n/g, '<br>')}</p>` : ''}
-                        
-                        <h2>Invoice Details:</h2>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Description</th>
-                                    <th>Qty</th>
-                                    <th>Unit Price</th>
-                                    <th class='text-right'>Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
+             // Add notes to the invoice output
+            const existingNotesDiv = document.getElementById('invoice-notes-display');
+            if (existingNotesDiv) {
+                existingNotesDiv.remove();
+            }
 
-                invoiceLineItems.forEach(item => {
-                    const qty = item.quantity || 1;
-                    const price = (item.unit_price || 0).toFixed(2);
-                    const total = (qty * parseFloat(price)).toFixed(2);
-                    htmlBody += `
-                                <tr>
-                                    <td>${item.description || 'N/A'}</td>
-                                    <td>${qty}</td>
-                                    <td>$${price}</td>
-                                    <td class='text-right'>$${total}</td>
-                                </tr>
-                    `;
-                });
+            if (invoiceNotes) {
+                const notesDiv = document.createElement('div');
+                notesDiv.id = 'invoice-notes-display';
+                notesDiv.className = 'mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 text-sm';
+                notesDiv.innerHTML = `<strong>Notes:</strong><p>${invoiceNotes.replace(/\n/g, '<br>')}</p>`;
+                invoiceOutputDiv.insertBefore(notesDiv, invoiceOutputDiv.querySelector('.flex.flex-col.md\\:flex-row.gap-4.mt-6'));
+            }
+        });
 
-                const laborHours = parseFloat(document.getElementById('labor-hours').value) || 0;
-                const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
-                const laborTotalVal = laborHours * hourlyRate; 
+        // Save/Print Invoice functionality (repurposed from printInvoiceButton)
+        savePrintInvoiceButton.addEventListener('click', () => {
+            window.print();
+        });
 
-                if (invoiceLineItems.length > 0 && laborTotalVal > 0) {
-                    htmlBody += `
-                        <tr>
-                            <td colspan="4" style="text-align: center; background-color: #f9fafb; font-weight: 600; padding: 10px;">--- End of Material Items ---</td>
-                        </tr>
-                    `;
-                }
-
-
-                if (laborTotalVal > 0) {
-                    htmlBody += `
-                                <tr>
-                                    <td>Labor (${laborHours} hours @ $${hourlyRate.toFixed(2)}/hr)</td>
-                                    <td>1</td>
-                                    <td>$${laborTotalVal.toFixed(2)}</td>
-                                    <td class='text-right'>$${laborTotalVal.toFixed(2)}</td>
-                                </tr>
-                    `;
-                }
-
-                htmlBody += `
-                            </tbody>
-                            <tfoot>
-                                <tr class='total-row'>
-                                    <td colspan='3' class='text-right'>Materials Subtotal:</td>
-                                    <td class='text-right'>${materialsSubtotal}</td>
-                                </tr>
-                                <tr class='total-row'>
-                                    <td colspan='3' class='text-right'>Labor Total:</td>
-                                    <td class='text-right'>${laborTotal}</td>
-                                </tr>
-                                <tr class='total-row'>
-                                    <td colspan='3' class='text-right'>Tax:</td>
-                                    <td class='text-right'>${invoiceTaxValue}</td>
-                                </tr>
-                                <tr class='total-row'>
-                                    <td colspan='3' class='text-right'>Grand Total:</td>
-                                    <td class='text-right'>${grandTotal}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                        <p style='margin-top: 20px;'>Please let us know if you have any questions.</p>
-                        <p>Thank you for your business!</p>
-                        <p>${companyName}</p>
-                    </body>
-                    </html>
-                `;
-
-                // Call the sendInvoiceEmail function with the generated HTML body
-                sendInvoiceEmail(clientEmail, subject, htmlBody);
-            });
-
-            // New: Event listener for Print Invoice Button
-            printInvoiceButton.addEventListener('click', () => {
-                // Trigger the browser's print dialog
-                window.print();
-            });
-        </script>
-    </body>
-    </html>
+    </script>
+</body>
+</html>
