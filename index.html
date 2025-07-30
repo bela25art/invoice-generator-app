@@ -398,6 +398,11 @@
                     </tr>
                 </tfoot>
             </table>
+            <!-- Additional Invoice Notes Display Area -->
+            <div id="invoice-notes-display" class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 text-sm hidden">
+                <strong>Notes:</strong>
+                <p id="display-invoice-notes"></p>
+            </div>
             <div class="flex flex-col md:flex-row gap-4 mt-6">
                 <!-- Removed Send Invoice Email Button -->
                 <!-- New Save/Print Invoice Button -->
@@ -475,6 +480,7 @@
         const invoiceLaborTotal = document.getElementById('invoice-labor-total'); // New
         const invoiceTax = document.getElementById('invoice-tax');
         const invoiceGrandTotal = document.getElementById('invoice-grand-total');
+        const displayInvoiceNotes = document.getElementById('display-invoice-notes'); // New: For displaying notes
 
         // Changed from printInvoiceButton to savePrintInvoiceButton
         const savePrintInvoiceButton = document.getElementById('savePrintInvoiceButton');
@@ -921,18 +927,14 @@
             generateLoadingSpinner.classList.add('hidden');
             generateInvoiceBtn.disabled = false;
 
-             // Add notes to the invoice output
-            const existingNotesDiv = document.getElementById('invoice-notes-display');
-            if (existingNotesDiv) {
-                existingNotesDiv.remove();
-            }
-
+            // Display invoice notes
+            const invoiceNotesDisplayDiv = document.getElementById('invoice-notes-display');
             if (invoiceNotes) {
-                const notesDiv = document.createElement('div');
-                notesDiv.id = 'invoice-notes-display';
-                notesDiv.className = 'mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 text-sm';
-                notesDiv.innerHTML = `<strong>Notes:</strong><p>${invoiceNotes.replace(/\n/g, '<br>')}</p>`;
-                invoiceOutputDiv.insertBefore(notesDiv, invoiceOutputDiv.querySelector('.flex.flex-col.md\\:flex-row.gap-4.mt-6'));
+                displayInvoiceNotes.innerHTML = invoiceNotes.replace(/\n/g, '<br>'); // Replace newlines with <br> for HTML display
+                invoiceNotesDisplayDiv.classList.remove('hidden');
+            } else {
+                invoiceNotesDisplayDiv.classList.add('hidden'); // Hide if no notes
+                displayInvoiceNotes.innerHTML = '';
             }
         });
 
