@@ -183,8 +183,15 @@
             body * {
                 visibility: hidden; /* Hide everything by default */
             }
-            #invoice-output, #invoice-output *, #invoice-notes-display, #invoice-notes-display * {
-                visibility: visible; /* Make only invoice output and notes visible */
+            #invoice-output, #invoice-output * {
+                visibility: visible; /* Make only invoice output and its children visible */
+            }
+            #invoice-notes-display { /* Explicitly make the notes container visible and block */
+                display: block !important;
+                visibility: visible !important;
+            }
+            #invoice-notes-display * { /* Ensure content inside notes container is also visible */
+                visibility: visible !important;
             }
             #invoice-output {
                 position: absolute;
